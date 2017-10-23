@@ -121,7 +121,7 @@ def convolutionFunction(pixelImage,kernel):
         if (x < endInitRow or y < endInitCol) or ((x >= limitRow and x < endLimitRow) or (y >= limitCol and y < endLimitCol)):
             aux[x,y] = value
         else:
-            #print(x,y) 
+            
             q = -1
             q1 = rows
             i =  -1 + x-endInitRow
@@ -137,11 +137,12 @@ def convolutionFunction(pixelImage,kernel):
                 while j < j2  and z < z1 : 
                     count = pixelImage[i,j]*kernel[q,z]   
                     convolutionValue = convolutionValue + count
-                    '''print('PIXELIMAGE : ',i,j)
-                    print('KERNEL : ',q,z)'''
                     j = j +1
                     z = z+1
-            aux[x,y] = int(convolutionValue/10)
+                if int(convolutionValue/10) >= 255:
+                    aux[x,y] = 255
+                else:
+                    aux[x,y] = int(convolutionValue/10)
     aux = aux.astype(np.uint8)
     return aux
 
