@@ -2,6 +2,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import numpy as np
+from math import e
 import functools 
 
 #----To show an image
@@ -152,12 +153,65 @@ def convolve(inputImage,kernel):
 def testConvolve(inputImage,kernel):
     compareImages(inputImage,convolve(inputImage,kernel))
 
+#--------------------Gaussian---------------------#
+def dimension(sigma):
+    a = (2 * (int(np.ceil(3*sigma))))+1
+    return a
+
+def arrayGauss1D(sigma):
+    return np.zeros(dimension(sigma),dtype=float)
+    
+def gaussDistribution1D(x,sigma):
+    fraction = 1./(np.sqrt(2.*np.pi)*sigma)
+    exponential = np.exp(-np.power(x,2.)/2*np.power(sigma,2))
+    g = fraction * exponential
+    return g
+
+def gaussKernel1D(sigma):
+    array1D = arrayGauss1D(sigma)
+    f= array1D.shape
+    b = int(np.ceil(f[0]/2))-1
+    a = -b
+    c = 0
+    while (c < f[0]):
+        array1D[c]=gaussDistribution1D(a,sigma)
+        a = a + 1
+        c = c + 1
+    return array1D
+
+def gaussDistributionNxN(x,y,sigma):
+    fraction = 1./(2.*np.pi*(np.power(sigma,2.)))
+    exponential = np.exp(-((np.power(x,2.) + np.power(y,2.)))/(2*(np.power(sigma,2))))
+    g = fraction * exponential
+    return g
+
+def gaussKernelNxN(sigma):
+    kernel = np.zeros((dimension(sigma),dimension(sigma)),dtype=float)
+    f,c = kernel.shape
+    a = -int(np.ceil(f/2))
+    i = -1
+    f = f -1
+    c = c -1
+    while(i < f):
+        a = a +1
+        b = -int(np.ceil(c/2))
+        i = i +1
+        j = 0
+        while(j <=c):
+            kernel[i,j]= gaussDistributionNxN(a,b,sigma)
+            b = b + 1
+            j = j +1
+    return kernel
+
+
+#-------------------------------------------------#
+
 #-------------------------------------------------#
 
 #----------------------Tests----------------------#
 
 #testWindowLevelContrastEnhancement('lena_gray.bmp',100,20)
 #testHistAdapt('lena_gray.bmp',100,200)
-testConvolve('lena_gray.bmp',createKernel(2,3,3))
+#testConvolve('lena_gray.bmp',createKernel(2,3,3))
 
 #-------------------------------------------------#
