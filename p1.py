@@ -100,55 +100,59 @@ def createKernel(maxValue,rows,cols):
     m[int(rows/2),int(cols/2)] = maxValue
     return m
 
-def convolutionFunction(pixelImage,kernel):
-    rowsImage,colsImage = pixelImage.shape
-    rows,cols = kernel.shape
-    rowsKernel = rows -1
-    colsKernel = cols -1
-    limitRow = rowsImage - int(rowsKernel/2) 
-    endLimitRow = rowsImage
-    limitCol = colsImage - int(colsKernel/2) 
-    endLimitCol = colsImage
-    if int(rowsKernel/2)==1 :
-        endInitRow = 1
+def matrixConvolve(m1,m2,i):
+    aux = 0
+    for (x,y), value in np.ndenumerate(m1):
+        aux = aux + (value*m2[x,y])
+    if i ==0:
+        if aux>255.:
+            return 255
+        else :
+            return int(aux)
     else:
-        endInitRow = int((rowsKernel/2))
-    if int(colsKernel/2) == 1:
-        endInitCol = 1
+        if int(aux/10)>255:
+            return 255
+        else :
+            return int(aux/10)
+
+def dimensionRC(a,rows):
+    x = np.zeros((rows+1),dtype=int)
+    init = -int(rows/2)
+    limit = int(rows/2) + 1
+    if init== 0:
+        x[0]=a
     else:
-        endInitCol = int(colsKernel/2)
-    aux = np.zeros((rowsImage,colsImage),dtype=int)
+        for i in range(init,limit):
+            c = i + int(rows/2)
+            x[c]= i + a
+    return x
+
+def convolutionFunction(pixelImage,kernel,i):
+    dimensionsI = pixelImage.shape
+    dimensionK = kernel.shape
+    rowsKernel = dimensionK[0] -1
+    colsKernel = dimensionK[1] -1
+    limitRow = dimensionsI[0] - int(rowsKernel/2) 
+    limitCol = dimensionsI[1] - int(colsKernel/2)
+    endInitRow = int((rowsKernel/2))
+    endInitCol = int(colsKernel/2)
+    aux = np.zeros(dimensionsI,dtype=int)
     for (x,y), value in np.ndenumerate(pixelImage):
-        if (x < endInitRow or y < endInitCol) or ((x >= limitRow and x < endLimitRow) or (y >= limitCol and y < endLimitCol)):
+        c = 0
+        if (x < endInitRow or y < endInitCol) or (x >= limitRow or y >= limitCol):
             aux[x,y] = value
         else:
-            
-            q = -1
-            q1 = rows
-            i =  -1 + x-endInitRow
-            i2 = x + endInitRow 
-            convolutionValue = 0
-            while i < i2 and q < q1:
-                i = i +1
-                q = q +1
-                z = 0 
-                z1 = cols
-                j = y - endInitCol
-                j2 = y + endInitCol +1
-                while j < j2  and z < z1 : 
-                    count = pixelImage[i,j]*kernel[q,z]   
-                    convolutionValue = convolutionValue + count
-                    j = j +1
-                    z = z+1
-                if int(convolutionValue/10) >= 255:
-                    aux[x,y] = 255
-                else:
-                    aux[x,y] = int(convolutionValue/10)
+            ixgrid = np.ix_(dimensionRC(x,rowsKernel), dimensionRC(y,colsKernel))
+            m1 = pixelImage[ixgrid]
+            if i == 0:
+                aux[x,y] = matrixConvolve(m1,kernel,0)
+            elif i == 1:
+                aux[x,y] = matrixConvolve(m1,kernel,1)
     aux = aux.astype(np.uint8)
     return aux
 
 def convolve(inputImage,kernel):
-    return convolutionFunction(loadImage(inputImage),kernel)
+    return convolutionFunction(loadImage(inputImage),kernel,1)
     
 def testConvolve(inputImage,kernel):
     compareImages(inputImage,convolve(inputImage,kernel))
@@ -159,7 +163,7 @@ def dimension(sigma):
     return a
 
 def arrayGauss1D(sigma):
-    return np.zeros(dimension(sigma),dtype=float)
+    return np.zeros((1,dimension(sigma)),dtype=float)
     
 def gaussDistribution1D(x,sigma):
     fraction = 1./(np.sqrt(2.*np.pi)*sigma)
@@ -170,13 +174,13 @@ def gaussDistribution1D(x,sigma):
 def gaussKernel1D(sigma):
     array1D = arrayGauss1D(sigma)
     f= array1D.shape
-    b = int(np.ceil(f[0]/2))-1
-    a = -b
+    a = -int((f[1]-1)/2)
     c = 0
-    while (c < f[0]):
-        array1D[c]=gaussDistribution1D(a,sigma)
+    d=0
+    while (d < f[1]):
+        array1D[c,d]=gaussDistribution1D(a,sigma)
         a = a + 1
-        c = c + 1
+        d = d + 1
     return array1D
 
 def gaussDistributionNxN(x,y,sigma):
@@ -203,8 +207,38 @@ def gaussKernelNxN(sigma):
             j = j +1
     return kernel
 
+def gaussianFilter2D(inputImage,sigma):
+    kernel = gaussKernel1D(sigma)
+    return convolutionFunction(convolutionFunction(loadImage(inputImage),np.transpose(kernel),0),kernel,0)
 
+def testGaussianFilter2D(inputImage,sigma):
+    compareImages(inputImage,gaussianFilter2D(inputImage,sigma))
 #-------------------------------------------------#
+
+#-------------------Median Filter-------------------------#
+
+def medianFilter2D(pixelImage,filterSize):
+    dimensionsI = pixelImage.shape
+    rowsKernel = filterSize[0] -1
+    colsKernel = filterSize[1] -1
+    limitRow = dimensionsI[0] - int(rowsKernel/2) 
+    limitCol = dimensionsI[1] - int(colsKernel/2)
+    endInitRow = int((rowsKernel/2))
+    endInitCol = int(colsKernel/2)
+    aux = np.zeros(dimensionsI,dtype=int)
+    for (x,y), value in np.ndenumerate(pixelImage):
+        c = 0
+        if (x < endInitRow or y < endInitCol) or (x >= limitRow or y >= limitCol):
+            aux[x,y] = value
+        else:
+            ixgrid = np.ix_(dimensionRC(x,rowsKernel), dimensionRC(y,colsKernel))
+            m1 = pixelImage[ixgrid]
+            aux[x,y] = np.median(m1)
+    aux = aux.astype(np.uint8)
+    return aux
+
+def testMedianFilter2D(inputImage,filterSize):
+    compareImages(inputImage,medianFilter2D(loadImage(inputImage),filterSize))
 
 #-------------------------------------------------#
 
@@ -213,5 +247,6 @@ def gaussKernelNxN(sigma):
 #testWindowLevelContrastEnhancement('lena_gray.bmp',100,20)
 #testHistAdapt('lena_gray.bmp',100,200)
 #testConvolve('lena_gray.bmp',createKernel(2,3,3))
-
+#testGaussianFilter2D('lena_gray.bmp',1)
+#testMedianFilter2D('lena_gray.bmp',(7,7))
 #-------------------------------------------------#
