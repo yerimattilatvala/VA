@@ -50,7 +50,7 @@ def histEnhance(inputImage,cenValue,winSize):
 def compareImages(inputImage,outputImage):
     fig = plt.figure()
     a=fig.add_subplot(1,2,1)
-    showingImage(loadImage(inputImage))
+    showingImage(inputImage)
     a.set_title('Before')
     a=fig.add_subplot(1,2,2)
     showingImage(outputImage)
@@ -59,7 +59,7 @@ def compareImages(inputImage,outputImage):
 
 #----Function to test the transfrorm
 def testWindowLevelContrastEnhancement(image,cenValue,winSize):
-    compareImages(image,histEnhance(image,cenValue,winSize))
+    compareImages(loadImage(image),histEnhance(image,cenValue,winSize))
 
 #-------------------------------------------------#
 
@@ -89,7 +89,7 @@ def histAdapt(inputImage,minValue,maxValue):
     return img2
 
 def testHistAdapt(inputImage,minValue,maxValue):
-    compareImages(inputImage,histAdapt(inputImage,minValue,maxValue))
+    compareImages(loadImage(inputImage),histAdapt(inputImage,minValue,maxValue))
     compareHist(inputImage,histAdapt(inputImage,minValue,maxValue))
 #-------------------------------------------------#
 
@@ -155,7 +155,7 @@ def convolve(inputImage,kernel):
     return convolutionFunction(loadImage(inputImage),kernel,1)
     
 def testConvolve(inputImage,kernel):
-    compareImages(inputImage,convolve(inputImage,kernel))
+    compareImages(loadImage(inputImage),convolve(inputImage,kernel))
 
 #--------------------Gaussian---------------------#
 def dimension(sigma):
@@ -212,7 +212,7 @@ def gaussianFilter2D(inputImage,sigma):
     return convolutionFunction(convolutionFunction(loadImage(inputImage),np.transpose(kernel),0),kernel,0)
 
 def testGaussianFilter2D(inputImage,sigma):
-    compareImages(inputImage,gaussianFilter2D(inputImage,sigma))
+    compareImages(loadImage(inputImage),gaussianFilter2D(inputImage,sigma))
 #-------------------------------------------------#
 
 #-------------------Median Filter-------------------------#
@@ -238,7 +238,252 @@ def medianFilter2D(pixelImage,filterSize):
     return aux
 
 def testMedianFilter2D(inputImage,filterSize):
-    compareImages(inputImage,medianFilter2D(loadImage(inputImage),filterSize))
+    compareImages(loadImage(inputImage),medianFilter2D(loadImage(inputImage),filterSize))
+
+#-------------------------------------------------#
+
+#-------------------------------------------------#
+def eeType(strElType,strElSize):
+    if strElType == 'square':
+        if (strElSize[0]%2) == 0 and (strElSize[1]%2) == 0:
+            m = np.ones((strElSize[0]+1,strElSize[1]+1),dtype=int)
+            for (x,y), value in np.ndenumerate(m):
+                if x == 0 or y == strElSize[1]:
+                    m[x,y] = 0
+        else: 
+            m = np.ones(strElSize,dtype=int)
+        return m
+    elif strElType == 'cross' :
+        m1 = np.zeros(strElSize,dtype=int)
+        for (x,y), value in np.ndenumerate(m1):
+            if x == int((strElSize[0]-1)/2) or y == int((strElSize[1]-1)/2):
+                m1[x,y] = 1
+        return m1
+    elif strElType == 'linev' :
+        if (strElSize[0]%2) == 0:
+            m1 = np.ones((strElSize[0]+1,strElSize[1]),dtype=int)
+            m1[0]= 0
+        else:
+            m1 = np.ones(strElSize,dtype=int)
+        return m1
+    elif strElType == 'lineh' :
+        print()
+        if (strElSize[1]%2) == 0:
+            m1 = np.ones((strElSize[0],strElSize[1]+1),dtype=int)
+            m1[0,strElSize[1]] = 0
+        else:
+            m1 = np.ones(strElSize,dtype=int)
+        return m1
+
+def onesInImages(EE):
+    r = EE.shape[0]-1
+    c = []
+    for (x,y),value in np.ndenumerate(EE):
+        if value == 1 or value == 255:
+            x1 =abs(x - r)
+            c.append((x1,y)) 
+    return np.array(c,dtype=('int,int'))
+
+def isInside(a,onesImage,onesKernel):
+    aux = 255
+    for i in onesKernel:
+        d = a[0] + i[0],a[1]+i[1]
+        v = d in onesImage
+        if v == False:
+            aux = 0
+    return aux
+
+def erodeFunction(image,kernel):
+    kernelDimensions = kernel.shape
+    onesImage = onesInImages(image).tolist()
+    onesKernel = onesInImages(kernel)
+    r,c = image.shape[0],image.shape[1]
+    rowsKernel = kernelDimensions[0] -1
+    colsKernel = kernelDimensions[1] -1
+    limitRow = r - int(rowsKernel/2) 
+    limitCol = c - int(colsKernel/2)
+    initRow = int((rowsKernel/2))
+    initCol = int(colsKernel/2)
+    aux = np.zeros((image.shape),dtype=int)
+    for (x,y),value in np.ndenumerate(image):
+        if (x < initRow or y < initCol) or (x >= limitRow or y >= limitCol):
+            aux[x,y] = value
+        else:
+            if value == 255:
+                x1 = abs(x-(r-1))
+                aux[x,y] = isInside((x1,y),onesImage,onesKernel)
+    aux = aux.astype(np.uint8)
+    return aux    
+    
+def erode(inputImage, strElType,strElSize):
+    kernel = eeType(strElType,strElSize)
+    return erodeFunction(inputImage,kernel)
+
+def exampleImage():
+    a = np.zeros((16,16),dtype=int)
+    a[2,3]=255
+    a[2,4]=255
+    a[2,5]=255
+    a[3,2] = 255
+    a[3,3]=255
+    a[3,4]=255
+    a[3,5]=255
+    a[3,6] = 255
+    a[4,2] = 255
+    a[4,3]=255
+    a[4,4]=255
+    a[4,5]=255
+    a[4,6] = 255
+    a[4,11]=255
+    a[4,12]=255
+    a[4,13] = 255
+    a[5,2] = 255
+    a[5,3]=255
+    a[5,4]=255
+    a[5,5]=255
+    a[5,10] = 255
+    a[5,11]=255
+    a[5,12]=255
+    a[5,13] = 255
+    a[6,3]=255
+    a[6,4]=255
+    a[6,9] = 255
+    a[6,10] = 255
+    a[6,11]=255
+    a[6,12]=255
+    a[6,13] = 255
+    a[7,9] = 255
+    a[7,10] = 255
+    a[7,11]=255
+    a[7,12]=255
+    a[7,8] = 255
+    a[8,9] = 255
+    a[8,10] = 255
+    a[8,11]=255
+    a[8,7]=255
+    a[8,8] = 255
+    a[9,9] = 255
+    a[9,10] = 255
+    a[9,6]=255
+    a[9,7]=255
+    a[9,8] = 255
+    a[10,9] = 255
+    a[10,5] = 255
+    a[10,6]=255
+    a[10,7]=255
+    a[10,8] = 255
+    a[11,4] = 255
+    a[11,5] = 255
+    a[11,6]=255
+    a[11,7]=255
+    a[11,8] = 255
+    a[12,7]=255
+    a[12,8] = 255
+    a[12,4] = 255
+    a[12,5] = 255
+    a[12,6]=255
+    a[12,10]=255
+    a[12,11] = 255
+    a[12,9] =255
+    a[13,7]=255
+    a[13,8] = 255
+    a[13,4] = 255
+    a[13,5] = 255
+    a[13,6]=255
+    a[13,10]=255
+    a[13,11] = 255
+    a[13,9] =255
+    a[14,7]=255
+    a[14,8] = 255
+    a[14,5] = 255
+    a[14,6]=255
+    a[14,10]=255
+    a[14,9] =255
+    return a
+
+def exampleImage2():
+    m = np.zeros((24,24),dtype=int)
+    for (x,y), value in np.ndenumerate(m):
+        if y == 5 or y == 7 or y == 11 or y ==13 or y == 17:
+            m[x,y] = 255
+    return m
+
+def testErode(inputImage, strElType,strElSize):
+    compareImages(inputImage,erode(inputImage, strElType,strElSize))
+
+
+def onesInsideImage(image,kernelDimensions):
+    r,c = image.shape[0],image.shape[1]
+    rowsKernel = kernelDimensions[0] -1
+    colsKernel = kernelDimensions[1] -1
+    limitRow = r - int(rowsKernel/2) 
+    limitCol = c - int(colsKernel/2)
+    initRow = int((rowsKernel/2))
+    initCol = int(colsKernel/2)
+    c = []
+    for (x,y),value in np.ndenumerate(image):
+        if (x >= initRow and y >= initCol) and (x < limitRow and y < limitCol):
+            if value == 255  :
+                x1 =abs(x - (r-1))
+                c.append((x1,y)) 
+    return c
+
+def appendPoint(onesImage,onesEE):
+    c = onesImage
+    aux = []
+    for i in onesImage:
+        for j in onesEE:
+            d = i[0]+j[0],i[1]+j[1]
+            if (d in c) == False:
+                #print(i,'+',j,'=',d)
+                aux.append(d)
+    return np.array(aux,dtype=('int,int'))
+
+def dilateFunction(image,kernel):
+    kernelDimensions = kernel.shape
+    onesImage = onesInsideImage(image,kernelDimensions)
+    onesKernel = onesInImages(kernel)
+    r,c = image.shape[0],image.shape[1]
+    rowsKernel = kernelDimensions[0] -1
+    colsKernel = kernelDimensions[1] -1
+    limitRow = r - int(rowsKernel/2) 
+    limitCol = c - int(colsKernel/2)
+    initRow = int((rowsKernel/2))
+    initCol = int(colsKernel/2)
+    m = appendPoint(onesImage,onesKernel).tolist()
+    aux = np.zeros((image.shape),dtype=int)
+    for (x,y),value in np.ndenumerate(image):
+        if (x < initRow or y < initCol) or (x >= limitRow or y >= limitCol):
+                aux[x,y] = value
+        else:
+            x1 = abs(x-(r-1))
+            d = x1,y
+            if (d in m) == True:
+                aux[x,y] = 255
+            else:
+                aux[x,y] = value
+
+    aux = aux.astype(np.uint8)
+    return aux    
+
+def dilate(inputImage, strElType,strElSize):
+    EE = eeType(strElType,strElSize)
+    return dilateFunction(inputImage,EE)
+
+def testDilate(inputImage,strElType,strElSize):
+    compareImages(inputImage,dilate(inputImage,strElType,strElSize))
+
+def opening(inputImage, strElType,strElSize):
+    return dilate(erode(inputImage,strElType,strElSize,),strElType,strElSize)
+
+def testOpening(inputImage,strElType,strElSize):
+    compareImages(inputImage,opening(inputImage,strElType,strElSize))
+
+def closing(inputImage, strElType,strElSize):
+    return erode(dilate(inputImage,strElType,strElSize,),strElType,strElSize)
+
+def testClosing(inputImage,strElType,strElSize):
+    compareImages(inputImage,closing(inputImage,strElType,strElSize))
 
 #-------------------------------------------------#
 
@@ -246,7 +491,18 @@ def testMedianFilter2D(inputImage,filterSize):
 
 #testWindowLevelContrastEnhancement('lena_gray.bmp',100,20)
 #testHistAdapt('lena_gray.bmp',100,200)
-#testConvolve('lena_gray.bmp',createKernel(2,3,3))
+#testConvolve('lena_gray.bmp',createKernel(2,3,5))
 #testGaussianFilter2D('lena_gray.bmp',1)
 #testMedianFilter2D('lena_gray.bmp',(7,7))
+#testErode(exampleImage(),'lineh',(1,5))
+#testDilate(exampleImage(),'square',(3,3))
+#testOpening(exampleImage(),'square',(3,3))
+testClosing(exampleImage(),'square',(3,3))
 #-------------------------------------------------#
+'''image = exampleImage()
+ee = eeType('square',(3,3))
+a = onesInsideImage(image,ee.shape)
+e = onesInImages(ee)
+c = appendPoint(a,e)
+print(a)'''
+
