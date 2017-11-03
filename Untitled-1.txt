@@ -1,0 +1,186 @@
+def eeType(strElType,strElSize):
+    if strElType == 'square':
+        m1 = np.ones(strElSize,dtype=int)
+        return m1
+    elif strElType == 'cross' :
+        m1 = np.zeros(strElSize,dtype=int)
+        for (x,y), value in np.ndenumerate(m1):
+            if x == int((strElSize[0]-1)/2) or y == int((strElSize[1]-1)/2):
+                m1[x,y] = 1
+        return m1
+    elif strElType == 'linev' :
+        m1 = np.ones(strElSize,dtype=int)
+        return m1
+    elif strElType == 'lineh' :
+        m1 = np.ones(strElSize,dtype=int)
+        return m1
+
+def onesInEE(EE):
+    r = EE.shape[0]-1
+    c = []
+    for (x,y),value in np.ndenumerate(EE):
+        if value == 1:
+            x1 =abs(x - r)
+            c.append((x1,y)) 
+    return np.array(c,dtype=('int,int'))
+
+def onesInImage(image,kernelDimensions):
+    r,c = image.shape[0],image.shape[1]
+    rowsKernel = kernelDimensions[0] -1
+    colsKernel = kernelDimensions[1] -1
+    limitRow = r - int(rowsKernel/2) 
+    limitCol = c - int(colsKernel/2)
+    initRow = int((rowsKernel/2))
+    initCol = int(colsKernel/2)
+    c = []
+    for (x,y),value in np.ndenumerate(image):
+        if (x >= initRow and y >= initCol) and (x < limitRow and y < limitCol):
+            if value == 255  :
+                x1 =abs(x - (r-1))
+                c.append((x1,y)) 
+    return np.array(c,dtype=('int,int'))
+
+def isInside(a,onesImage,onesKernel):
+    aux = 255
+    for i in onesKernel:
+        d = a[0] + i[0],a[1]+i[1]
+        v = d in onesImage
+        if v == False:
+            aux = 0
+    return aux
+
+def erodeFunction(image,kernel):
+    kernelDimensions = kernel.shape
+    onesImage = onesInImage(image,kernelDimensions).tolist()
+    onesKernel = onesInEE(kernel)
+    r,c = image.shape[0],image.shape[1]
+    rowsKernel = kernelDimensions[0] -1
+    colsKernel = kernelDimensions[1] -1
+    limitRow = r - int(rowsKernel/2) 
+    limitCol = c - int(colsKernel/2)
+    initRow = int((rowsKernel/2))
+    initCol = int(colsKernel/2)
+    aux = np.zeros((image.shape),dtype=int)
+    for (x,y),value in np.ndenumerate(image):
+        if (x < initRow or y < initCol) or (x >= limitRow or y >= limitCol):
+            aux[x,y] = value
+        else:
+            if value == 255:
+                x1 = abs(x-(r-1))
+                aux[x,y] = isInside((x1,y),onesImage,onesKernel)
+            else:
+                aux[x,y] = value
+    aux = aux.astype(np.uint8)
+    return aux    
+    
+def erode(inputImage, strElType,strElSize):
+    kernel = eeType(strElType,strElSize)
+    return erodeFunction(inputImage,kernel)
+
+def exampleImage():
+    a = np.zeros((16,16),dtype=int)
+    a[2,3]=255
+    a[2,4]=255
+    a[2,5]=255
+    a[3,2] = 255
+    a[3,3]=255
+    a[3,4]=255
+    a[3,5]=255
+    a[3,6] = 255
+    a[4,2] = 255
+    a[4,3]=255
+    a[4,4]=255
+    a[4,5]=255
+    a[4,6] = 255
+    a[4,11]=255
+    a[4,12]=255
+    a[4,13] = 255
+    a[5,2] = 255
+    a[5,3]=255
+    a[5,4]=255
+    a[5,5]=255
+    a[5,10] = 255
+    a[5,11]=255
+    a[5,12]=255
+    a[5,13] = 255
+    a[6,3]=255
+    a[6,4]=255
+    a[6,9] = 255
+    a[6,10] = 255
+    a[6,11]=255
+    a[6,12]=255
+    a[6,13] = 255
+    a[7,9] = 255
+    a[7,10] = 255
+    a[7,11]=255
+    a[7,12]=255
+    a[7,8] = 255
+    a[8,9] = 255
+    a[8,10] = 255
+    a[8,11]=255
+    a[8,7]=255
+    a[8,8] = 255
+    a[9,9] = 255
+    a[9,10] = 255
+    a[9,6]=255
+    a[9,7]=255
+    a[9,8] = 255
+    a[10,9] = 255
+    a[10,5] = 255
+    a[10,6]=255
+    a[10,7]=255
+    a[10,8] = 255
+    a[11,4] = 255
+    a[11,5] = 255
+    a[11,6]=255
+    a[11,7]=255
+    a[11,8] = 255
+    a[12,7]=255
+    a[12,8] = 255
+    a[12,4] = 255
+    a[12,5] = 255
+    a[12,6]=255
+    a[12,10]=255
+    a[12,11] = 255
+    a[12,9] =255
+    a[13,7]=255
+    a[13,8] = 255
+    a[13,4] = 255
+    a[13,5] = 255
+    a[13,6]=255
+    a[13,10]=255
+    a[13,11] = 255
+    a[13,9] =255
+    a[14,7]=255
+    a[14,8] = 255
+    a[14,5] = 255
+    a[14,6]=255
+    a[14,10]=255
+    a[14,9] =255
+    return a
+
+def testErode(inputImage, strElType,strElSize):
+
+'''a = eeType('square',(3,3))
+e = onesInEE(a).tolist()
+if (1,0) in e :
+    print('si')'''
+
+'''a = verticalLines()
+ee = eeType('square',(3,3))
+m = onesInImage(a,ee.shape)
+d = 7 +0,17+1
+print(d)
+v = d in m.tolist()
+print(v)'''
+
+
+'''ee = eeType('linev',(7,1))
+e = onesInEE(ee)
+a = onesInImage(exampleImage(),ee.shape)
+m = a.tolist()
+print(a)
+for i in a:
+    print(i)
+    print(isInside(i,m,e))
+showImage(exampleImage())'''

@@ -51,10 +51,8 @@ def compareImages(inputImage,outputImage):
     fig = plt.figure()
     a=fig.add_subplot(1,2,1)
     showingImage(inputImage)
-    a.set_title('Before')
     a=fig.add_subplot(1,2,2)
     showingImage(outputImage)
-    a.set_title('After')
     plt.show()
 
 #----Function to test the transfrorm
@@ -127,7 +125,11 @@ def dimensionRC(a,rows):
             x[c]= i + a
     return x
 
-def convolutionFunction(pixelImage,kernel,i):
+def convolutionFunction(pixelImage,kernel):
+    if (type(kernel[0,0])) == np.int32:
+        i = 1
+    elif (type(kernel[0,0])) == np.float64:
+        i = 0
     dimensionsI = pixelImage.shape
     dimensionK = kernel.shape
     rowsKernel = dimensionK[0] -1
@@ -144,18 +146,18 @@ def convolutionFunction(pixelImage,kernel,i):
         else:
             ixgrid = np.ix_(dimensionRC(x,rowsKernel), dimensionRC(y,colsKernel))
             m1 = pixelImage[ixgrid]
-            if i == 0:
-                aux[x,y] = matrixConvolve(m1,kernel,0)
-            elif i == 1:
-                aux[x,y] = matrixConvolve(m1,kernel,1)
+            aux[x,y] = matrixConvolve(m1,kernel,i)
     aux = aux.astype(np.uint8)
     return aux
 
 def convolve(inputImage,kernel):
-    return convolutionFunction(loadImage(inputImage),kernel,1)
+    print(kernel)
+    kernel = np.rot90(np.rot90(kernel))
+    print(kernel)
+    return convolutionFunction(inputImage,kernel)
     
 def testConvolve(inputImage,kernel):
-    compareImages(loadImage(inputImage),convolve(inputImage,kernel))
+    compareImages(loadImage(inputImage),convolve(loadImage(inputImage),kernel))
 
 #--------------------Gaussian---------------------#
 def dimension(sigma):
@@ -209,10 +211,10 @@ def gaussKernelNxN(sigma):
 
 def gaussianFilter2D(inputImage,sigma):
     kernel = gaussKernel1D(sigma)
-    return convolutionFunction(convolutionFunction(loadImage(inputImage),np.transpose(kernel),0),kernel,0)
+    return convolve(convolve(inputImage,np.transpose(kernel)),kernel)
 
 def testGaussianFilter2D(inputImage,sigma):
-    compareImages(loadImage(inputImage),gaussianFilter2D(inputImage,sigma))
+    compareImages(loadImage(inputImage),gaussianFilter2D(loadImage(inputImage),sigma))
 #-------------------------------------------------#
 
 #-------------------Median Filter-------------------------#
@@ -487,22 +489,61 @@ def testClosing(inputImage,strElType,strElSize):
 
 #-------------------------------------------------#
 
+#----------Operadores de primera derivada---------#
+
+def gxPrewitt():
+    gx1 = np.ones((3,1),dtype=int)
+    gx2 = np.array((-1,0,1),dtype=int)
+    return gx1,gx2
+
+def gyPrewitt():
+    gy2 = np.ones((1,3),dtype=int)
+    gy1 = np.array(([-1],[0],[1]),dtype=int)
+    return gy1,gy2
+
+def prewittOperator():
+    gx1,gx2 = gxPrewitt()
+    gy1.gy2 = gyPrewitt()
+    Gx = convolve(convolve(inputImage,gx1),gx2)
+    Gy = convolve(convolve(inputImage,gy1),gy2)
+    compareImages(Gx,Gy)
+
+def gxSobel():
+    gx1 = np.ones((3,1),dtype=int)
+    gx1[1,0]=2
+    gx2 = np.zeros((1,3),dtype = int)
+    gx2[0,0] = -1
+    gx2[0,2] = 1
+    return gx1,gx2
+
+def gySobel():
+    gx1 = np.ones((1,3),dtype=int)
+    gx1[0,1]=2
+    gx2 = np.zeros((3,1),dtype = int)
+    gx2[0,0] = 1
+    gx2[2,0] = -1
+    return gx2,gx1
+
+def sobelOperator(inputImage):
+    gx1,gx2 = gxSobel()
+    gy1,gy2 = gySobel()
+    Gx = convolve(convolve(inputImage,gx1),gx2)
+    Gy = convolve(convolve(inputImage,gy1),gy2)
+    compareImages(Gx,Gy)
+
+#-------------------------------------------------#
+
 #----------------------Tests----------------------#
 
 #testWindowLevelContrastEnhancement('lena_gray.bmp',100,20)
 #testHistAdapt('lena_gray.bmp',100,200)
-#testConvolve('lena_gray.bmp',createKernel(2,3,5))
-#testGaussianFilter2D('lena_gray.bmp',1)
+#testConvolve('lena_gray.bmp',createKernel(2,3,3))
+#testGaussianFilter2D('lena_gray.bmp',2)
 #testMedianFilter2D('lena_gray.bmp',(7,7))
 #testErode(exampleImage(),'lineh',(1,5))
 #testDilate(exampleImage(),'square',(3,3))
 #testOpening(exampleImage(),'square',(3,3))
-testClosing(exampleImage(),'square',(3,3))
+#testClosing(exampleImage(),'square',(3,3))
 #-------------------------------------------------#
-'''image = exampleImage()
-ee = eeType('square',(3,3))
-a = onesInsideImage(image,ee.shape)
-e = onesInImages(ee)
-c = appendPoint(a,e)
-print(a)'''
 
+sobelOperator(loadImage('lena_gray.bmp'))
