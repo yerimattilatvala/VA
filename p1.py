@@ -38,10 +38,9 @@ def transformFunction(center,window,a):
 
 #----Function that transform the contrast
 def histEnhance(inputImage,cenValue,winSize):
-    img = loadImage(inputImage)
-    dimsension = img.shape        #----Calcule the array dimensions
+    dimsension = inputImage.shape        #----Calcule the array dimensions
     vfunc = np.vectorize(transformFunction)  #----Apply the tranfer function to each pixel
-    img1 = vfunc(cenValue,winSize,img.flatten())
+    img1 = vfunc(cenValue,winSize,inputImage.flatten())
     img2 = np.reshape(img1,dimsension)
     img2 = img2.astype(np.uint8)
     return img2
@@ -57,7 +56,7 @@ def compareImages(inputImage,outputImage):
 
 #----Function to test the transfrorm
 def testWindowLevelContrastEnhancement(image,cenValue,winSize):
-    compareImages(loadImage(image),histEnhance(image,cenValue,winSize))
+    compareImages(loadImage(image),histEnhance(oadImage(image),cenValue,winSize))
 
 #-------------------------------------------------#
 
@@ -71,93 +70,60 @@ def compareHist(inputImage,outputImage):
     plt.show()
 
 def modifyDinamicRange(gMinNorm,gMaxNorm,gMin,gMax,g):
-    a = gMaxNorm - gMinNorm
-    b = g - gMin
-    c = gMax- gMin
+    a = (gMaxNorm - gMinNorm)
+    b = (g - gMin)
+    c = (gMax- gMin)
     d = int((a*b)/c)
     return gMinNorm + d
     
 def histAdapt(inputImage,minValue,maxValue):
-    img = loadImage(inputImage)
-    dimsension = img.shape        #----Calcule the array dimensions
+    dimsension = inputImage.shape        #----Calcule the array dimensions
     vfunc = np.vectorize(modifyDinamicRange)
-    img1 = vfunc(minValue,maxValue,np.amin(img),np.amax(img),img.flatten())
+    img1 = vfunc(minValue,maxValue,np.amin(inputImage),inputImage.max(),inputImage.flatten())
     img2 = np.reshape(img1,dimsension)
     img2 = img2.astype(np.uint8)
     return img2
 
 def testHistAdapt(inputImage,minValue,maxValue):
-    compareImages(loadImage(inputImage),histAdapt(inputImage,minValue,maxValue))
-    compareHist(inputImage,histAdapt(inputImage,minValue,maxValue))
+    compareImages(loadImage(inputImage),histAdapt(loadImage(inputImage),minValue,maxValue))
+    compareHist(inputImage,histAdapt(loadImage(inputImage),minValue,maxValue))
 #-------------------------------------------------#
 
 #--Spatial filtering: Smoothing and highlighting--#
-
-def createKernel(maxValue,rows,cols):
-    m = np.ones((rows,cols),dtype=int)
-    m[int(rows/2),int(cols/2)] = maxValue
-    return m
-
-def matrixConvolve(m1,m2,i):
-    aux = 0
-    for (x,y), value in np.ndenumerate(m1):
-        aux = aux + (value*m2[x,y])
-    if i ==0:
-        if aux>255.:
-            return 255
-        else :
-            return int(aux)
-    else:
-        if int(aux/10)>255:
-            return 255
-        else :
-            return int(aux/10)
-
-def dimensionRC(a,rows):
-    x = np.zeros((rows+1),dtype=int)
-    init = -int(rows/2)
-    limit = int(rows/2) + 1
-    if init== 0:
-        x[0]=a
-    else:
-        for i in range(init,limit):
-            c = i + int(rows/2)
-            x[c]= i + a
-    return x
-
 def convolutionFunction(pixelImage,kernel):
-    if (type(kernel[0,0])) == np.int32:
-        i = 1
-    elif (type(kernel[0,0])) == np.float64:
-        i = 0
-    dimensionsI = pixelImage.shape
-    dimensionK = kernel.shape
-    rowsKernel = dimensionK[0] -1
-    colsKernel = dimensionK[1] -1
-    limitRow = dimensionsI[0] - int(rowsKernel/2) 
-    limitCol = dimensionsI[1] - int(colsKernel/2)
-    endInitRow = int((rowsKernel/2))
-    endInitCol = int(colsKernel/2)
-    aux = np.zeros(dimensionsI,dtype=int)
+    rowsKernel = kernel.shape[0] 
+    colsKernel = kernel.shape[1] 
+    initRow = int((rowsKernel-1)/2)
+    initCol = int((colsKernel-1)/2)
+    limitRow = pixelImage.shape[0] - initRow
+    limitCol = pixelImage.shape[1] - initCol
+    aux = np.zeros_like(pixelImage)
+
     for (x,y), value in np.ndenumerate(pixelImage):
         c = 0
-        if (x < endInitRow or y < endInitCol) or (x >= limitRow or y >= limitCol):
+        if (x < initRow or y < initCol) or (x >= limitRow or y >= limitCol):
             aux[x,y] = value
         else:
-            ixgrid = np.ix_(dimensionRC(x,rowsKernel), dimensionRC(y,colsKernel))
-            m1 = pixelImage[ixgrid]
-            aux[x,y] = matrixConvolve(m1,kernel,i)
-    aux = aux.astype(np.uint8)
+            c = np.sum(kernel*pixelImage[(x-initRow):(x+initRow+1),(y-initCol):(y+initCol+1)])
+            if c > 255:
+                aux[x,y] = 255
+            else:
+                aux[x,y] = c
     return aux
 
 def convolve(inputImage,kernel):
-    print(kernel)
-    kernel = np.rot90(np.rot90(kernel))
-    print(kernel)
+    kernel = np.flipud(np.fliplr(kernel))
+    a = kernel.sum()
+    if a >= 1:
+        kernel = kernel/a
+    if ((kernel.shape[0]%2) == 0):
+       kernel =  np.insert(kernel,kernel.shape[0],0,axis = 0)
+    if ((kernel.shape[1]%2) == 0):
+        kernel = np.insert(kernel,kernel.shape[1],0,axis = 1)
     return convolutionFunction(inputImage,kernel)
     
 def testConvolve(inputImage,kernel):
-    compareImages(loadImage(inputImage),convolve(loadImage(inputImage),kernel))
+    compareImages(loadImage(inputImage),convolve(loadImage(inputImage),kernel).astype(np.uint8))
 
 #--------------------Gaussian---------------------#
 def dimension(sigma):
@@ -169,7 +135,7 @@ def arrayGauss1D(sigma):
     
 def gaussDistribution1D(x,sigma):
     fraction = 1./(np.sqrt(2.*np.pi)*sigma)
-    exponential = np.exp(-np.power(x,2.)/2*np.power(sigma,2))
+    exponential = np.exp(-((x**2)/(2.0*sigma**2)))
     g = fraction * exponential
     return g
 
@@ -211,36 +177,57 @@ def gaussKernelNxN(sigma):
 
 def gaussianFilter2D(inputImage,sigma):
     kernel = gaussKernel1D(sigma)
-    return convolve(convolve(inputImage,np.transpose(kernel)),kernel)
+    A = convolve(inputImage,np.transpose(kernel))
+    return convolve(A,kernel)
 
 def testGaussianFilter2D(inputImage,sigma):
     compareImages(loadImage(inputImage),gaussianFilter2D(loadImage(inputImage),sigma))
 #-------------------------------------------------#
 
-#-------------------Median Filter-------------------------#
+#------------------Median Filter------------------#
 
 def medianFilter2D(pixelImage,filterSize):
-    dimensionsI = pixelImage.shape
-    rowsKernel = filterSize[0] -1
-    colsKernel = filterSize[1] -1
-    limitRow = dimensionsI[0] - int(rowsKernel/2) 
-    limitCol = dimensionsI[1] - int(colsKernel/2)
-    endInitRow = int((rowsKernel/2))
-    endInitCol = int(colsKernel/2)
-    aux = np.zeros(dimensionsI,dtype=int)
+    rowsKernel = filterSize[0] 
+    colsKernel = filterSize[1] 
+    initRow = int((rowsKernel-1)/2)
+    initCol = int((colsKernel-1)/2)
+    limitRow = pixelImage.shape[0] - initRow
+    limitCol = pixelImage.shape[1] - initCol
+    aux = np.zeros_like(pixelImage)
+
     for (x,y), value in np.ndenumerate(pixelImage):
-        c = 0
-        if (x < endInitRow or y < endInitCol) or (x >= limitRow or y >= limitCol):
+        if (x < initRow or y < initCol) or (x >= limitRow or y >= limitCol):
             aux[x,y] = value
         else:
-            ixgrid = np.ix_(dimensionRC(x,rowsKernel), dimensionRC(y,colsKernel))
-            m1 = pixelImage[ixgrid]
-            aux[x,y] = np.median(m1)
+            aux[x,y] = np.median(pixelImage[(x-initRow):(x+initRow+1),(y-initCol):(y+initCol+1)])
     aux = aux.astype(np.uint8)
     return aux
 
 def testMedianFilter2D(inputImage,filterSize):
     compareImages(loadImage(inputImage),medianFilter2D(loadImage(inputImage),filterSize))
+
+#-------------------------------------------------#
+
+#------------------HighBoost----------------------#
+def aHb(A):
+    a = np.zeros((3,3),dtype=int)
+    for (x,y),value in np.ndenumerate(a):
+        if x == 1 and y == 1:
+            a[x,y]= A +8
+        else:
+            a[x,y]= -1
+    return a
+
+def highBoost(inputImage,A,method,parameter):
+    a = aHb(A-1)
+    ghb1 = convolve(inputImage,a)
+    if method == 'gaussian':
+        subs = gaussianFilter2D(inputImage,parameter)
+    elif method == 'median':
+        subs = medianFilter2D(inputImage,parameter)
+    ghb2 = inputImage - subs
+    ghb = ghb1 + ghb2
+    return ghb
 
 #-------------------------------------------------#
 
@@ -413,7 +400,6 @@ def exampleImage2():
 def testErode(inputImage, strElType,strElSize):
     compareImages(inputImage,erode(inputImage, strElType,strElSize))
 
-
 def onesInsideImage(image,kernelDimensions):
     r,c = image.shape[0],image.shape[1]
     rowsKernel = kernelDimensions[0] -1
@@ -491,22 +477,52 @@ def testClosing(inputImage,strElType,strElSize):
 
 #----------Operadores de primera derivada---------#
 
+def gxRoberts():
+    gx = np.zeros((2,2),dtype=int)
+    gx[0,0] = -1
+    gx[1,1] = 1
+    gx = np.flipud(np.fliplr(gx))
+    aux = np.zeros(((gx.shape[0]+1),(gx.shape[1]+1)),dtype=int)
+    aux[1:,1:] = gx
+    return aux
+
+def gyRoberts():
+    gy = np.zeros((2,2),dtype=int)
+    gy[1,0] = 1
+    gy[0,1] = -1
+    gy = np.flipud(np.fliplr(gy))
+    aux = np.zeros(((gy.shape[0]+1),(gy.shape[1]+1)),dtype=int)
+    aux[1:,1:] = gy
+    return aux
+
+def robertsOperator(inputImage):
+    gx = gxRoberts()
+    gy = gyRoberts()
+    Gx = convolutionFunction(inputImage,gx)
+    Gy = convolutionFunction(inputImage,gy)
+    return Gx,Gy
+    
 def gxPrewitt():
     gx1 = np.ones((3,1),dtype=int)
-    gx2 = np.array((-1,0,1),dtype=int)
+    gx2 = np.ones((1,3),dtype=int)
+    gx2[0,0] = -1
+    gx2[0,1] = 0 
     return gx1,gx2
 
 def gyPrewitt():
     gy2 = np.ones((1,3),dtype=int)
-    gy1 = np.array(([-1],[0],[1]),dtype=int)
+    gy1 = np.ones((3,1),dtype=int)
+    gy1[0,0] = -1
+    gy1[1,0] = 0
+
     return gy1,gy2
 
-def prewittOperator():
+def prewittOperator(inputImage):
     gx1,gx2 = gxPrewitt()
-    gy1.gy2 = gyPrewitt()
+    gy1,gy2 = gyPrewitt()
     Gx = convolve(convolve(inputImage,gx1),gx2)
     Gy = convolve(convolve(inputImage,gy1),gy2)
-    compareImages(Gx,Gy)
+    return Gx,Gy
 
 def gxSobel():
     gx1 = np.ones((3,1),dtype=int)
@@ -527,23 +543,32 @@ def gySobel():
 def sobelOperator(inputImage):
     gx1,gx2 = gxSobel()
     gy1,gy2 = gySobel()
-    Gx = convolve(convolve(inputImage,gx1),gx2)
-    Gy = convolve(convolve(inputImage,gy1),gy2)
-    compareImages(Gx,Gy)
+    Gx1 = convolve(inputImage,gx1).astype(np.uint8)
+    Gx = convolve(Gx1,gx2).astype(np.uint8)
+    Gy = convolve(convolve(inputImage,gy1).astype(np.uint8),gy2).astype(np.uint8)
+    return Gx,Gy
 
+def derivatives(inputImage,operator):
+    Gx,Gy = 0,0
+    if operator == 'Roberts':
+        return robertsOperator(inputImage)
+    elif operator == 'Prewitt':
+        return prewittOperator(inputImage)
+    elif operator == 'Sobel':
+        return sobelOperator(inputImage)
 #-------------------------------------------------#
 
 #----------------------Tests----------------------#
 
 #testWindowLevelContrastEnhancement('lena_gray.bmp',100,20)
 #testHistAdapt('lena_gray.bmp',100,200)
-#testConvolve('lena_gray.bmp',createKernel(2,3,3))
-#testGaussianFilter2D('lena_gray.bmp',2)
+#testConvolve('lena_gray.bmp',np.array(([0.1,0.1,0.1],[0.1,0.2,0.1],[0.1,0.1,0.1])))
+#testGaussianFilter2D('lena_gray.bmp',1)
 #testMedianFilter2D('lena_gray.bmp',(7,7))
 #testErode(exampleImage(),'lineh',(1,5))
 #testDilate(exampleImage(),'square',(3,3))
 #testOpening(exampleImage(),'square',(3,3))
 #testClosing(exampleImage(),'square',(3,3))
 #-------------------------------------------------#
-
-sobelOperator(loadImage('lena_gray.bmp'))
+#gx,gy = derivatives(loadImage('lena_gray.bmp'),'Sobel')
+#highBoost(loadImage('lena_gray.bmp'),0,'gaussian',1)
