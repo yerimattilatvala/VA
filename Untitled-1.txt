@@ -1,7 +1,13 @@
 def eeType(strElType,strElSize):
     if strElType == 'square':
-        m1 = np.ones(strElSize,dtype=int)
-        return m1
+        if (strElSize[0]%2) == 0 and (strElSize[1]%2) == 0:
+            m = np.ones((strElSize[0]+1,strElSize[1]+1),dtype=int)
+            for (x,y), value in np.ndenumerate(m):
+                if x == 0 or y == strElSize[1]:
+                    m[x,y] = 0
+        else: 
+            m = np.ones(strElSize,dtype=int)
+        return m
     elif strElType == 'cross' :
         m1 = np.zeros(strElSize,dtype=int)
         for (x,y), value in np.ndenumerate(m1):
@@ -9,35 +15,28 @@ def eeType(strElType,strElSize):
                 m1[x,y] = 1
         return m1
     elif strElType == 'linev' :
-        m1 = np.ones(strElSize,dtype=int)
+        if (strElSize[0]%2) == 0:
+            m1 = np.ones((strElSize[0]+1,strElSize[1]),dtype=int)
+            m1[0]= 0
+        else:
+            m1 = np.ones(strElSize,dtype=int)
         return m1
     elif strElType == 'lineh' :
-        m1 = np.ones(strElSize,dtype=int)
+        print()
+        if (strElSize[1]%2) == 0:
+            m1 = np.ones((strElSize[0],strElSize[1]+1),dtype=int)
+            m1[0,strElSize[1]] = 0
+        else:
+            m1 = np.ones(strElSize,dtype=int)
         return m1
 
-def onesInEE(EE):
+def onesInImages(EE):
     r = EE.shape[0]-1
     c = []
     for (x,y),value in np.ndenumerate(EE):
-        if value == 1:
+        if value == 1 or value == 255:
             x1 =abs(x - r)
             c.append((x1,y)) 
-    return np.array(c,dtype=('int,int'))
-
-def onesInImage(image,kernelDimensions):
-    r,c = image.shape[0],image.shape[1]
-    rowsKernel = kernelDimensions[0] -1
-    colsKernel = kernelDimensions[1] -1
-    limitRow = r - int(rowsKernel/2) 
-    limitCol = c - int(colsKernel/2)
-    initRow = int((rowsKernel/2))
-    initCol = int(colsKernel/2)
-    c = []
-    for (x,y),value in np.ndenumerate(image):
-        if (x >= initRow and y >= initCol) and (x < limitRow and y < limitCol):
-            if value == 255  :
-                x1 =abs(x - (r-1))
-                c.append((x1,y)) 
     return np.array(c,dtype=('int,int'))
 
 def isInside(a,onesImage,onesKernel):
@@ -51,8 +50,8 @@ def isInside(a,onesImage,onesKernel):
 
 def erodeFunction(image,kernel):
     kernelDimensions = kernel.shape
-    onesImage = onesInImage(image,kernelDimensions).tolist()
-    onesKernel = onesInEE(kernel)
+    onesImage = onesInImages(image).tolist()
+    onesKernel = onesInImages(kernel)
     r,c = image.shape[0],image.shape[1]
     rowsKernel = kernelDimensions[0] -1
     colsKernel = kernelDimensions[1] -1
@@ -68,8 +67,6 @@ def erodeFunction(image,kernel):
             if value == 255:
                 x1 = abs(x-(r-1))
                 aux[x,y] = isInside((x1,y),onesImage,onesKernel)
-            else:
-                aux[x,y] = value
     aux = aux.astype(np.uint8)
     return aux    
     
@@ -77,110 +74,110 @@ def erode(inputImage, strElType,strElSize):
     kernel = eeType(strElType,strElSize)
     return erodeFunction(inputImage,kernel)
 
-def exampleImage():
-    a = np.zeros((16,16),dtype=int)
-    a[2,3]=255
-    a[2,4]=255
-    a[2,5]=255
-    a[3,2] = 255
-    a[3,3]=255
-    a[3,4]=255
-    a[3,5]=255
-    a[3,6] = 255
-    a[4,2] = 255
-    a[4,3]=255
-    a[4,4]=255
-    a[4,5]=255
-    a[4,6] = 255
-    a[4,11]=255
-    a[4,12]=255
-    a[4,13] = 255
-    a[5,2] = 255
-    a[5,3]=255
-    a[5,4]=255
-    a[5,5]=255
-    a[5,10] = 255
-    a[5,11]=255
-    a[5,12]=255
-    a[5,13] = 255
-    a[6,3]=255
-    a[6,4]=255
-    a[6,9] = 255
-    a[6,10] = 255
-    a[6,11]=255
-    a[6,12]=255
-    a[6,13] = 255
-    a[7,9] = 255
-    a[7,10] = 255
-    a[7,11]=255
-    a[7,12]=255
-    a[7,8] = 255
-    a[8,9] = 255
-    a[8,10] = 255
-    a[8,11]=255
-    a[8,7]=255
-    a[8,8] = 255
-    a[9,9] = 255
-    a[9,10] = 255
-    a[9,6]=255
-    a[9,7]=255
-    a[9,8] = 255
-    a[10,9] = 255
-    a[10,5] = 255
-    a[10,6]=255
-    a[10,7]=255
-    a[10,8] = 255
-    a[11,4] = 255
-    a[11,5] = 255
-    a[11,6]=255
-    a[11,7]=255
-    a[11,8] = 255
-    a[12,7]=255
-    a[12,8] = 255
-    a[12,4] = 255
-    a[12,5] = 255
-    a[12,6]=255
-    a[12,10]=255
-    a[12,11] = 255
-    a[12,9] =255
-    a[13,7]=255
-    a[13,8] = 255
-    a[13,4] = 255
-    a[13,5] = 255
-    a[13,6]=255
-    a[13,10]=255
-    a[13,11] = 255
-    a[13,9] =255
-    a[14,7]=255
-    a[14,8] = 255
-    a[14,5] = 255
-    a[14,6]=255
-    a[14,10]=255
-    a[14,9] =255
-    return a
+
+
+def exampleImage2():
+    m = np.zeros((24,24),dtype=int)
+    for (x,y), value in np.ndenumerate(m):
+        if y == 5 or y == 7 or y == 11 or y ==13 or y == 17:
+            m[x,y] = 255
+    return m
 
 def testErode(inputImage, strElType,strElSize):
+    compareImages(inputImage,erode(inputImage, strElType,strElSize))
 
-'''a = eeType('square',(3,3))
-e = onesInEE(a).tolist()
-if (1,0) in e :
-    print('si')'''
+def onesInsideImage(image,kernelDimensions):
+    r,c = image.shape[0],image.shape[1]
+    rowsKernel = kernelDimensions[0] -1
+    colsKernel = kernelDimensions[1] -1
+    limitRow = r - int(rowsKernel/2) 
+    limitCol = c - int(colsKernel/2)
+    initRow = int((rowsKernel/2))
+    initCol = int(colsKernel/2)
+    c = []
+    for (x,y),value in np.ndenumerate(image):
+        if (x >= initRow and y >= initCol) and (x < limitRow and y < limitCol):
+            if value == 255  :
+                x1 =abs(x - (r-1))
+                c.append((x1,y)) 
+    return c
 
-'''a = verticalLines()
-ee = eeType('square',(3,3))
-m = onesInImage(a,ee.shape)
-d = 7 +0,17+1
-print(d)
-v = d in m.tolist()
-print(v)'''
+def appendPoint(onesImage,onesEE):
+    c = onesImage
+    aux = []
+    for i in onesImage:
+        for j in onesEE:
+            d = i[0]+j[0],i[1]+j[1]
+            if (d in c) == False:
+                #print(i,'+',j,'=',d)
+                aux.append(d)
+    return np.array(aux,dtype=('int,int'))
 
+def dilateFunction(image,kernel):
+    kernelDimensions = kernel.shape
+    onesImage = onesInsideImage(image,kernelDimensions)
+    onesKernel = onesInImages(kernel)
+    r,c = image.shape[0],image.shape[1]
+    rowsKernel = kernelDimensions[0] -1
+    colsKernel = kernelDimensions[1] -1
+    limitRow = r - int(rowsKernel/2) 
+    limitCol = c - int(colsKernel/2)
+    initRow = int((rowsKernel/2))
+    initCol = int(colsKernel/2)
+    m = appendPoint(onesImage,onesKernel).tolist()
+    aux = np.zeros((image.shape),dtype=int)
+    for (x,y),value in np.ndenumerate(image):
+        if (x < initRow or y < initCol) or (x >= limitRow or y >= limitCol):
+                aux[x,y] = value
+        else:
+            x1 = abs(x-(r-1))
+            d = x1,y
+            if (d in m) == True:
+                aux[x,y] = 255
+            else:
+                aux[x,y] = value
 
-'''ee = eeType('linev',(7,1))
-e = onesInEE(ee)
-a = onesInImage(exampleImage(),ee.shape)
-m = a.tolist()
-print(a)
-for i in a:
-    print(i)
-    print(isInside(i,m,e))
+    aux = aux.astype(np.uint8)
+    return aux    
+
+def dilate(inputImage, strElType,strElSize):
+    EE = eeType(strElType,strElSize)
+    return dilateFunction(inputImage,EE)
+
+def testDilate(inputImage,strElType,strElSize):
+    compareImages(inputImage,dilate(inputImage,strElType,strElSize))
+
+def opening(inputImage, strElType,strElSize):
+    return dilate(erode(inputImage,strElType,strElSize,),strElType,strElSize)
+
+def testOpening(inputImage,strElType,strElSize):
+    compareImages(inputImage,opening(inputImage,strElType,strElSize))
+
+def closing(inputImage, strElType,strElSize):
+    return erode(dilate(inputImage,strElType,strElSize,),strElType,strElSize)
+
+def testClosing(inputImage,strElType,strElSize):
+    compareImages(inputImage,closing(inputImage,strElType,strElSize))
+
+#-------------------------------------------------#
 showImage(exampleImage())'''
+
+
+mediana
+
+def medianFilter2D(pixelImage,filterSize):
+    rowsKernel = filterSize[0] 
+    colsKernel = filterSize[1] 
+    initRow = int((rowsKernel-1)/2)
+    initCol = int((colsKernel-1)/2)
+    limitRow = pixelImage.shape[0] - initRow
+    limitCol = pixelImage.shape[1] - initCol
+    aux = np.zeros_like(pixelImage)
+
+    for (x,y), value in np.ndenumerate(pixelImage):
+        if (x < initRow or y < initCol) or (x >= limitRow or y >= limitCol):
+            aux[x,y] = value
+        else:
+            aux[x,y] = np.median(pixelImage[(x-initRow):(x+initRow+1),(y-initCol):(y+initCol+1)])
+    aux = aux.astype(np.uint8)
+    return aux
