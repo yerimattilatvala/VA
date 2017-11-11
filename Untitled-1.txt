@@ -181,3 +181,100 @@ def medianFilter2D(pixelImage,filterSize):
             aux[x,y] = np.median(pixelImage[(x-initRow):(x+initRow+1),(y-initCol):(y+initCol+1)])
     aux = aux.astype(np.uint8)
     return aux
+
+def dilate(inputImage,strElType,strElSize):
+    ee = eeType(strElType,strElSize)
+    rowsKernel = ee.shape[0] 
+    colsKernel = ee.shape[1] 
+    initRow = int((rowsKernel-1)/2)
+    initCol = int((colsKernel-1)/2)
+    image_padded = np.zeros((inputImage.shape[0] + (rowsKernel -1 ), inputImage.shape[1] + (colsKernel-1)))
+
+    output = np.zeros_like(inputImage)
+
+    for x in range(inputImage.shape[0]):
+        for y in range(inputImage.shape[1]):
+            if inputImage[x,y] == 255 or inputImage[x,y] ==1:
+                image_padded[x:(x+rowsKernel),y:(y+colsKernel)] = ee*255 + image_padded[x:(x+rowsKernel),y:(y+colsKernel)]
+
+    if (colsKernel -1) == 0 and (rowsKernel -1 ) == 0: #caso kernel 1x1
+          output = image_padded 
+    elif (colsKernel -1) == 0: 
+        output = image_padded[initRow:-initRow]
+    elif (rowsKernel -1 ) == 0:
+        output = image_padded[0:,initCol:-initCol]
+    else:
+         output = image_padded[initRow:-initRow,initCol:-initCol]
+    
+    return output.astype(np.uint8)
+
+#erode falla con valores pares
+def erode(inputImage,strElType,strElSize):
+    ee = eeType(strElType,strElSize)
+    rowsKernel = ee.shape[0] 
+    colsKernel = ee.shape[1] 
+    initRow = int((rowsKernel-1)/2)
+    initCol = int((colsKernel-1)/2)
+    image_padded = np.zeros((inputImage.shape[0] + (rowsKernel -1 ), inputImage.shape[1] + (colsKernel-1)))
+    if (colsKernel -1) == 0 and (rowsKernel -1 ) == 0: #caso kernel 1x1
+          image_padded = inputImage
+    elif (colsKernel -1) == 0: 
+        image_padded[initRow:-initRow] = inputImage
+    elif (rowsKernel -1 ) == 0:
+        image_padded[0:,initCol:-initCol] = inputImage
+    else:
+         image_padded[initRow:-initRow,initCol:-initCol] = inputImage
+    
+    output = np.zeros_like(inputImage)
+    for x in range(inputImage.shape[0]):
+        for y in range(inputImage.shape[1]):
+            if inputImage[x,y] == 255 or inputImage[x,y] ==1:
+                aux = np.ones(ee.shape)
+                #print(aux*inputImage[x,y],ee*inputImage[x,y],image_padded[x:(x+rowsKernel),y:(y+colsKernel)])
+                if ((np.allclose((ee*inputImage[x,y]),image_padded[x:(x+rowsKernel),y:(y+colsKernel)])) ==True) :
+                    output[x,y] = 255
+    return output.astype(np.uint8)
+
+    rowsKernel = filterSize[0]
+    colsKernel = filterSize[1]
+    if ((rowsKernel % 2) == 0):
+        rowsKernel1 = rowsKernel
+        rowsKernel = rowsKernel +1
+    else:
+        rowsKernel1 = rowsKernel
+    if ((colsKernel % 2) == 0):
+        colsKernel1  = colsKernel
+        colsKernel = colsKernel +1
+    else:
+        colsKernel1 = colsKernel
+
+    initRow = int((rowsKernel-1)/2)
+    initCol = int((colsKernel-1)/2)
+    image_padded = np.zeros((pixelImage.shape[0] + (rowsKernel -1 ), pixelImage.shape[1] + (colsKernel-1)))
+    if (colsKernel -1) == 0 and (rowsKernel -1 ) == 0: #caso kernel 1x1
+          image_padded = pixelImage
+    elif (colsKernel -1) == 0: 
+        image_padded[initRow:-initRow] = pixelImage
+    elif (rowsKernel -1 ) == 0:
+        image_padded[0:,initCol:-initCol] = pixelImage
+    else:
+         image_padded[initRow:-initRow,initCol:-initCol] = pixelImage
+    aux = np.zeros_like(pixelImage)
+
+    for x in range(pixelImage.shape[0]):
+        for y in range(pixelImage.shape[1]):
+            
+    return aux
+
+    if (value >112.5 and value < 157.5) or (value < -112.5 and value > -157.5):
+            n1 = window[0,0].astype(np.float)
+            n2 = window[2,2].astype(np.float)
+        elif (value > 67.5 and value < 112.5) or (value < -67.5 and value > -112.5) :
+            n1 = window[0,1].astype(np.float)
+            n2 = window[2,1].astype(np.float)
+        elif (value > 22.5 and value < 67.5) or (value < -22.5 and value > -67.5):
+            n1 = window[0,2].astype(np.float)
+            n2 = window[2,0].astype(np.float)
+        elif (value > -22.5 and value < 22.5) or (value >157.5 and value <-157.5) :
+            n1 = window[1,0].astype(np.float)
+            n2 = window[1,2].astype(np.float)

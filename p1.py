@@ -6,7 +6,7 @@ from math import e
 import functools 
 
 #----To show an image
-showingImage = functools.partial(plt.imshow, cmap= plt.get_cmap('gray'))
+showingImage = functools.partial(plt.imshow,vmin = 0, vmax = 255, cmap= plt.get_cmap('gray'))
 
 #----Function that represent outputImage
 def showImage(image):
@@ -50,9 +50,9 @@ def histEnhance(inputImage,cenValue,winSize):
 def compareImages(inputImage,outputImage):
     fig = plt.figure()
     a=fig.add_subplot(1,2,1)
-    showingImage(inputImage)
+    plt.imshow(inputImage,cmap= plt.get_cmap('gray'))
     a=fig.add_subplot(1,2,2)
-    showingImage(outputImage)
+    plt.imshow(outputImage,cmap= plt.get_cmap('gray'))
     plt.show()
 
 #----Function to test the transfrorm
@@ -82,18 +82,48 @@ def histAdapt(inputImage,minValue,maxValue):
     vfunc = np.vectorize(modifyDinamicRange)
     img1 = vfunc(minValue,maxValue,np.min(inputImage),np.max(inputImage),inputImage.flatten())
     img2 = np.reshape(img1,dimsension)
-    img2 = img2.astype(np.uint8)
     return img2
 
 def testHistAdapt(inputImage,minValue,maxValue):
     compareImages(loadImage(inputImage),histAdapt(loadImage(inputImage),minValue,maxValue))
-    compareHist(inputImage,histAdapt(loadImage(inputImage),minValue,maxValue))
+    compareHist(loadImage(inputImage),histAdapt(loadImage(inputImage),minValue,maxValue))
 #-------------------------------------------------#
 
+def filteredKernel(kernel):
+    kernel = np.flipud(np.fliplr(kernel))
+    '''a = kernel.sum()
+    if a > 1:
+        kernel = kernel/a'''
+    if ((kernel.shape[0]%2) == 0):
+        aux = np.zeros((kernel.shape[0]+1,kernel.shape[1]))
+        aux[1:] = kernel
+        kernel = aux
+    if ((kernel.shape[1]%2) == 0):
+        aux = np.zeros((kernel.shape[0],kernel.shape[1]+1))
+        aux[0:,1:]=kernel
+        kernel = aux
+    return kernel
+    
 #--Spatial filtering: Smoothing and highlighting--#
-def convolutionFunction(pixelImage,kernel):
-    rowsKernel = kernel.shape[0] 
-    colsKernel = kernel.shape[1] 
+def convolutionFunction(pixelImage,kernel,operation):
+    if operation == 'median':      
+        rowsKernel = kernel[0] 
+        colsKernel = kernel[1]
+        if ((rowsKernel % 2) == 0):
+            rowsKernel1 = rowsKernel
+            rowsKernel = rowsKernel +1
+        else:
+            rowsKernel1 = rowsKernel
+        if ((colsKernel % 2) == 0):
+            colsKernel1  = colsKernel
+            colsKernel = colsKernel +1
+        else:
+            colsKernel1 = colsKernel
+    else:                               # Para convolve erode y dilate
+        kernel = filteredKernel(kernel)
+        rowsKernel = kernel.shape[0] 
+        colsKernel = kernel.shape[1]
+
     initRow = int((rowsKernel-1)/2)
     initCol = int((colsKernel-1)/2)
     image_padded = np.zeros((pixelImage.shape[0] + (rowsKernel -1 ), pixelImage.shape[1] + (colsKernel-1)))
@@ -106,30 +136,31 @@ def convolutionFunction(pixelImage,kernel):
     else:
          image_padded[initRow:-initRow,initCol:-initCol] = pixelImage
     aux = np.zeros_like(pixelImage)
-
     for x in range(pixelImage.shape[0]):
         for y in range(pixelImage.shape[1]):
-            c = np.sum(kernel*image_padded[x:(x+rowsKernel),y:(y+colsKernel)])
-            if c > 255:
-                c = 255
-            elif c < 0:
-                c = 0
+            if operation == 'median':
+                c = np.median(image_padded[x:(x+rowsKernel1),y:(y+colsKernel1)])
+            elif operation == 'convolve':
+                c = np.sum(kernel*image_padded[x:(x+rowsKernel),y:(y+colsKernel)])
+            elif operation == 'dilate' :
+                window = image_padded[x:(x+rowsKernel),y:(y+colsKernel)]
+                c = np.amax((kernel*window))
+            elif operation == 'erode':
+                    window = image_padded[x:(x+rowsKernel),y:(y+colsKernel)]
+                    aux1 = window.copy()
+                    aux1[kernel==0] = np.max(window)
+                    c=np.min(aux1)
             aux[x,y] = c
     return aux
 
 def convolve(inputImage,kernel):
-    kernel = np.flipud(np.fliplr(kernel))
-    a = kernel.sum()
-    if a > 1:
-        kernel = kernel/a
-    if ((kernel.shape[0]%2) == 0):
-        kernel = np.insert(kernel,kernel.shape[0],0,axis=0)
-    if ((kernel.shape[1]%2) == 0):
-        kernel = np.insert(kernel,kernel.shape[1],0,axis=1)
-    return convolutionFunction(inputImage,kernel)
+    return convolutionFunction(inputImage.astype(np.int64),kernel,'convolve')
     
+#showImage(abs(convolve(loadImage('lena_gray.bmp'),np.arange(16).reshape((4,4)))))
 def testConvolve(inputImage,kernel):
-    compareImages(loadImage(inputImage),convolve(loadImage(inputImage),kernel))
+    output = convolve(loadImage(inputImage),kernel)
+    compareImages(loadImage(inputImage),output)
+    compareImages(loadImage(inputImage),histAdapt(output,0,255)) #hotsAdapt por si valores fuera de rango
 
 #--------------------Gaussian---------------------#
 def dimension(sigma):
@@ -189,24 +220,11 @@ def gaussianFilter2D(inputImage,sigma):
 def testGaussianFilter2D(inputImage,sigma):
     compareImages(loadImage(inputImage),gaussianFilter2D(loadImage(inputImage),sigma))
 #-------------------------------------------------#
-
+#showImage(gaussianFilter2D(loadImage('lena_gray.bmp'),2))
 #------------------Median Filter------------------#
 
 def medianFilter2D(pixelImage,filterSize): #mejorarlo
-    rowsKernel = filterSize[0] 
-    colsKernel = filterSize[1] 
-    initRow = int((rowsKernel-1)/2)
-    initCol = int((colsKernel-1)/2)
-    limitRow = pixelImage.shape[0] - initRow
-    limitCol = pixelImage.shape[1] - initCol
-    aux = np.zeros_like(pixelImage)
-
-    for (x,y), value in np.ndenumerate(pixelImage):
-        if (x < initRow or y < initCol) or (x >= limitRow or y >= limitCol):
-            aux[x,y] = value
-        else:
-            aux[x,y] = np.median(pixelImage[(x-initRow):(x+initRow+1),(y-initCol):(y+initCol+1)])
-    return aux
+    return convolutionFunction(pixelImage.astype(np.int64),filterSize,'median')
 
 def testMedianFilter2D(inputImage,filterSize):
     compareImages(loadImage(inputImage),medianFilter2D(loadImage(inputImage),filterSize))
@@ -219,21 +237,18 @@ def highBoost(inputImage,A,method,parameter):
         subs = gaussianFilter2D(inputImage,parameter)
     elif method == 'median':
         subs = medianFilter2D(inputImage,parameter)
-    ghb  = np.subtract((A*inputImage.astype(np.int64)).astype(np.int64),subs)
+    ghb  = np.subtract((A*inputImage.astype(np.int64)),subs)
     return ghb
 
+def testHighBoost(inputImage,A,method,parameter):
+    ghb = highBoost(loadImage(inputImage),A,method,parameter)
+    #compareImages(loadImage(inputImage),ghb)
+    compareImages(loadImage(inputImage),histAdapt(ghb,0,255))
 #-------------------------------------------------#
-
 #-------------------------------------------------#
 def eeType(strElType,strElSize): 
     if strElType == 'square':
-        if (strElSize[0]%2) == 0 and (strElSize[1]%2) == 0:
-            m = np.ones((strElSize[0]+1,strElSize[1]+1),dtype=int)
-            for (x,y), value in np.ndenumerate(m):
-                if x == strElSize[0] or y == strElSize[1]:
-                    m[x,y] = 0
-        else: 
-            m = np.ones(strElSize,dtype=int)
+        m = np.ones(strElSize,dtype=int)
         return m
     elif strElType == 'cross' :
         m1 = np.zeros(strElSize,dtype=int)
@@ -242,19 +257,10 @@ def eeType(strElType,strElSize):
                 m1[x,y] = 1
         return m1
     elif strElType == 'linev' :
-        if (strElSize[0]%2) == 0:
-            m1 = np.ones((strElSize[0]+1,strElSize[1]),dtype=int)
-            m1[0]= 0
-        else:
-            m1 = np.ones(strElSize,dtype=int)
+        m1 = np.ones(strElSize,dtype=int)
         return m1
     elif strElType == 'lineh' :
-        print()
-        if (strElSize[1]%2) == 0:
-            m1 = np.ones((strElSize[0],strElSize[1]+1),dtype=int)
-            m1[0,0] = 0
-        else:
-            m1 = np.ones(strElSize,dtype=int)
+        m1 = np.ones(strElSize,dtype=int)
         return m1
 
 def exampleImage():
@@ -341,60 +347,26 @@ def exampleImage():
 
 def exampleImage2():
     a = np.zeros((16,16),dtype=int)
-    a[1:3,2:4] = 255
-    a[5:7,5:7] = 255
+    a[6:9,6:9] = 1
+    a[9,9] = 1
+    a[10,9] = 1
+    a[10,8] = 1
+    a[10,10] = 1
+    a[11,9] = 1
     return a
 
-def dilate(inputImage,strElType,strElSize):
+def example3():
+    a = np.zeros((16,16),dtype=int)
+    a[5,5] = 255
+    return a
+
+def dilate(inputImage, strElType, strElSize):
     ee = eeType(strElType,strElSize)
-    rowsKernel = ee.shape[0] 
-    colsKernel = ee.shape[1] 
-    initRow = int((rowsKernel-1)/2)
-    initCol = int((colsKernel-1)/2)
-    image_padded = np.zeros((inputImage.shape[0] + (rowsKernel -1 ), inputImage.shape[1] + (colsKernel-1)))
+    return convolutionFunction(inputImage.astype(np.int64),ee,'dilate')
 
-    output = np.zeros_like(inputImage)
-
-    for x in range(inputImage.shape[0]):
-        for y in range(inputImage.shape[1]):
-            if inputImage[x,y] == 255 or inputImage[x,y] ==1:
-                image_padded[x:(x+rowsKernel),y:(y+colsKernel)] = ee*255 + image_padded[x:(x+rowsKernel),y:(y+colsKernel)]
-
-    if (colsKernel -1) == 0 and (rowsKernel -1 ) == 0: #caso kernel 1x1
-          output = image_padded 
-    elif (colsKernel -1) == 0: 
-        output = image_padded[initRow:-initRow]
-    elif (rowsKernel -1 ) == 0:
-        output = image_padded[0:,initCol:-initCol]
-    else:
-         output = image_padded[initRow:-initRow,initCol:-initCol]
-    
-    return output.astype(np.uint8)
-
-def erode(inputImage,strElType,strElSize):
+def erode(inputImage, strElType, strElSize):
     ee = eeType(strElType,strElSize)
-    rowsKernel = ee.shape[0] 
-    colsKernel = ee.shape[1] 
-    initRow = int((rowsKernel-1)/2)
-    initCol = int((colsKernel-1)/2)
-    image_padded = np.zeros((inputImage.shape[0] + (rowsKernel -1 ), inputImage.shape[1] + (colsKernel-1)))
-    if (colsKernel -1) == 0 and (rowsKernel -1 ) == 0: #caso kernel 1x1
-          image_padded = inputImage
-    elif (colsKernel -1) == 0: 
-        image_padded[initRow:-initRow] = inputImage
-    elif (rowsKernel -1 ) == 0:
-        image_padded[0:,initCol:-initCol] = inputImage
-    else:
-         image_padded[initRow:-initRow,initCol:-initCol] = inputImage
-    
-    output = np.zeros_like(inputImage)
-    for x in range(inputImage.shape[0]):
-        for y in range(inputImage.shape[1]):
-            if inputImage[x,y] == 255 or inputImage[x,y] ==1:
-                #image_padded[x:(x+rowsKernel),y:(y+colsKernel)] = ee*255 + image_padded[x:(x+rowsKernel),y:(y+colsKernel)]
-                if (np.allclose(ee*255,image_padded[x:(x+rowsKernel),y:(y+colsKernel)])) ==True:
-                    output[x,y] = 255
-    return output.astype(np.uint8)
+    return convolutionFunction(inputImage,ee,'erode')
 
 def testErode(inputImage, strElType,strElSize):
     compareImages(inputImage,erode(inputImage, strElType,strElSize))
@@ -434,12 +406,12 @@ def gyRoberts():
     gy[0,1] = -1
     return gy
 
-def robertsOperator(inputImage):
+def robertsOperator(inputImage): 
     gx = gxRoberts()
     gy = gyRoberts()
     Gx = convolve(inputImage,gx)
     Gy = convolve(inputImage,gy)
-    return Gy,Gx
+    return Gx,Gy
     
 def gxPrewitt():
     gx1 = np.ones((3,1),dtype=int)
@@ -505,22 +477,124 @@ def derivatives(inputImage,operator):
 
 def testDerivatives(inputImage,operator):
     gx,gy = derivatives(loadImage(inputImage),operator)
-    compareImages(gx,gy)
-    showImage(gx+gy)
+    compareImages(abs(gx),abs(gy))
+    showImage(abs(gx)+abs(gy))
 #-------------------------------------------------#
 
+# Canny
+def edgeCanny(inputImage,sigma,tlow,thigh):
+    smooth = gaussianFilter2D(inputImage,sigma)     # Suavizado gaussiano
+    gx,gy = derivatives(smooth,'Sobel')             # sobel
+    #Magnitud y orientacion
+    magnitude = np.sqrt((gx.astype(np.int64)**2)+(gy.astype(np.int64)**2))
+    orientation = np.degrees(np.arctan2(gy,gx))
+    #Supresión no máximos
+    image_padedd = np.zeros((inputImage.shape[0]+2,inputImage.shape[1]+2))
+    image_padedd[1:-1,1:-1] = magnitude
+    In = np.zeros_like(magnitude)
+    # Ajustar ángulos a 0º,45º,90º,135º
+    for (x,y), value in np.ndenumerate(orientation):
+        if orientation[x,y]  < 0:
+            orientation[x,y] =orientation[x,y]+180
+        if orientation[x,y] > 112.5 and orientation[x,y] < 157.5:
+            orientation[x,y] = 135
+        elif orientation[x,y] > 67.5 and orientation[x,y] < 112.5:
+            orientation[x,y] = 90
+        elif orientation[x,y] > 22.5 and orientation[x,y] < 67.5:
+            orientation[x,y] = 45
+        elif orientation[x,y] > 157.5 or orientation[x,y] < 22.5:
+            orientation[x,y] = 0
+        
+    for (x,y), value in np.ndenumerate(orientation):
+        window = image_padedd[x:x+3,y:y+3]
+        if (value ==135.0):
+            n1 = window[0,0]
+            n2 = window[2,2]
+        elif (value == 90.0)  :
+            n1 = window[0,1]
+            n2 = window[2,1]
+        elif (value == 45.0):
+            n1 = window[0,2]
+            n2 = window[2,0]
+        elif (value == 0.0):
+            n1 = window[1,0]
+            n2 = window[1,2]
+        if (magnitude[x,y] > n1 and magnitude[x,y] > n2):
+            In[x,y] = magnitude[x,y]
+    #Fin supresión no maxima
+    #Proceso de histeresis
+    visitados = []
+    H = np.zeros_like(In)
+    for (x,y),value in np.ndenumerate(orientation):
+        if (In[x,y] > thigh) and (((x,y) in visitados) == False):
+            H[x,y] = In[x,y]
+            if value==0.0 :
+                k1 = x-1
+                k2 = x+1
+                l1 = y
+                l2 = y
+                while((k1 >0) and (k2 >0) and (l1 >0) and (l2 >0) and (k1 < In.shape[0]) and (k2 < In.shape[0]) and (l1 < In.shape[1]) and (l2 < In.shape[1]) and (In[k1,l1]>tlow) and (In[k2,l2]>tlow)):
+                    H[k1,l1] = In[x,y]
+                    H[k2,l2] = In[x,y]
+                    visitados.append((k1,l1))
+                    visitados.append((k2,l2))
+                    k1 = k1-1
+                    k2 = k2+1
+            elif value == 45.0 :
+                k1 = x-1
+                k2 = x+1
+                l1 = y-1
+                l2 = y+1
+                while((k1 >0) and (k2 >0) and (l1 >0) and (l2 >0) and (k1 < In.shape[0]) and (k2 < In.shape[0]) and (l1 < In.shape[1]) and (l2 < In.shape[1]) and (In[k1,l1]>tlow) and (In[k2,l2]>tlow)):
+                    H[k1,l1] = In[x,y]
+                    H[k2,l2] = In[x,y]
+                    visitados.append((k1,l1))
+                    visitados.append((k2,l2))
+                    k1 = k1-1
+                    k2 = k2+1
+                    l1 = l1-1
+                    l2=l2+1
+            elif value == 90.0 :
+                k1 = x
+                k2 = x
+                l1 = y-1
+                l2 = y+1
+                while((k1 >0) and (k2 >0) and (l1 >0) and (l2 >0) and (k1 < In.shape[0]) and (k2 < In.shape[0]) and (l1 < In.shape[1]) and (l2 < In.shape[1]) and (In[k1,l1]>tlow) and (In[k2,l2]>tlow)):
+                    H[k1,l1] = In[x,y]
+                    H[k2,l2] = In[x,y]
+                    visitados.append((k1,l1))
+                    visitados.append((k2,l2))
+                    l1 = l1-1
+                    l2 = l2+1
+            elif value == 135.0:
+                k1 = x-1
+                k2 = x+1
+                l1 = y+1
+                l2 =y-1
+                while((k1 >0) and (k2 >0) and (l1 >0) and (l2 >0) and (k1 < In.shape[0]) and (k2 < In.shape[0]) and (l1 < In.shape[1]) and (l2 < In.shape[1]) and (In[k1,l1]>tlow) and (In[k2,l2]>tlow)):
+                    H[k1,l1] = In[x,y]
+                    H[k2,l2] = In[x,y]
+                    visitados.append((k1,l1))
+                    visitados.append((k2,l2))
+                    k1 = k1-1
+                    k2 = k2+1 
+                    l1 = l1+1
+                    l2 = l2-1
+    return H 
+        
+#edgeCanny(loadImage('lena_gray.bmp'),0.625,30,50)
+
+# Harris
 #----------------------Tests----------------------#
 #testWindowLevelContrastEnhancement('lena_gray.bmp',100,20)
 #testHistAdapt('lena_gray.bmp',100,200)
-#testConvolve('lena_gray.bmp',np.array(([0.1,0.1,0.1],[0.1,0.2,0.1],[0.1,0.1,0.1])))
-#testGaussianFilter2D('lena_gray.bmp',5)
-#testMedianFilter2D('lena_gray.bmp',(7,7))
-#testErode(exampleImage(),'lineh',(1,5))
+#testConvolve('lena_gray.bmp',np.array(([1,1,1],[1,11,1],[1,1,1])).reshape((3,3)))
+#testGaussianFilter2D('lena_gray.bmp',3)
+#testMedianFilter2D('lena_gray.bmp',(5,4))
+#testHighBoost('lena_gray.bmp',3,'median',(11,11))
+#testErode(exampleImage2(),'lineh',(1,2))
 #testDilate(exampleImage(),'square',(3,3))
 #testOpening(exampleImage(),'square',(3,3))
 #testClosing(exampleImage(),'square',(3,3))
 #testDerivatives('lena_gray.bmp','Roberts')
 #-------------------------------------------------#
-
-#ghb = highBoost(loadImage('lena_gray.bmp'),1,'median',(5,5))
-#compareImages(loadImage('lena_gray.bmp'),histAdapt(ghb,0,255))
