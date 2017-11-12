@@ -394,11 +394,11 @@ def example3():
 
 def dilate(inputImage, strElType, strElSize):
     ee = eeType(strElType,strElSize)
-    return convolutionFunction(inputImage.astype(np.int64),ee,'dilate')
+    return convolutionFunction(inputImage,ee,'dilate')
 
 def erode(inputImage, strElType, strElSize):
     ee = eeType(strElType,strElSize)
-    return convolutionFunction(inputImage.astype(np.int64),ee,'erode')
+    return convolutionFunction(inputImage,ee,'erode')
 
 def testErode(inputImage, strElType,strElSize):
     output = erode(inputImage,strElType,strElSize)
@@ -452,9 +452,9 @@ def testClosing(inputImage,strElType,strElSize):
 
 def tophatFilter(inputImage,strElType,strElSize,mode):
     if mode == 'white':
-        img = np.subtract(inputImage, opening(inputImage,strElType,strElSize).astype(np.int64))
+        img = np.subtract(inputImage, opening(inputImage,strElType,strElSize))
     elif mode == 'black':
-        img = np.subtract(inputImage,closing(inputImage,strElType,strElSize).astype(np.int64))
+        img = np.subtract(closing(inputImage,strElType,strElSize),inputImage)
     return img
 
 def testTopHat(inputImage,strElType,strElSize,mode):

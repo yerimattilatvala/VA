@@ -11,7 +11,7 @@ from p1 import *
 #testDilate(example3(),'cross',(3,3))
 #testOpening(exampleImage(),'square',(3,3))
 #testClosing(exampleImage(),'square',(3,3))
-#testTopHat(loadImage('lena_gray.bmp'),'square',(11,11),'white')
+#testTopHat(loadImage('lena_binary.bmp'),'square',(3,3),'white')
 #testDerivatives('lena_gray.bmp','Sobel')
 #testEdgeCanny('lena_gray.bmp',0.625,30,50)
 #-------------------------------------------------#
