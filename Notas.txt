@@ -1,0 +1,9 @@
+-Cambiar valores para visualizacion y personalizacion de tests
+-Revisar :
+        ->Convolve y visualizacion
+        ->Gauss
+        ->Mediana !!!
+        ->Operadores:
+            ->topHat !!!
+        -> Derivatives
+        ->Canny

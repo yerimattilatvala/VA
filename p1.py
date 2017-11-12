@@ -5,13 +5,8 @@ import numpy as np
 from math import e
 import functools 
 
-#----To show an image
-showingImage = functools.partial(plt.imshow,vmin = 0, vmax = 255, cmap= plt.get_cmap('gray'))
 
-#----Function that represent outputImage
-def showImage(image):
-    showingImage(image)
-    plt.show()     
+showingImage = functools.partial(plt.imshow, vmin = 0, vmax = 255,cmap= plt.get_cmap('gray'))
 
 #----Function to load the pixels of the image
 def loadImage(image):
@@ -46,30 +41,23 @@ def histEnhance(inputImage,cenValue,winSize):
     img2 = img2.astype(np.uint8)
     return img2
 
-#----Function that shows before and after
-def compareImages(inputImage,outputImage):
-    fig = plt.figure()
-    a=fig.add_subplot(1,2,1)
-    plt.imshow(inputImage,cmap= plt.get_cmap('gray'))
-    a=fig.add_subplot(1,2,2)
-    plt.imshow(outputImage,cmap= plt.get_cmap('gray'))
-    plt.show()
-
 #----Function to test the transfrorm
 def testWindowLevelContrastEnhancement(image,cenValue,winSize):
-    compareImages(loadImage(image),histEnhance(oadImage(image),cenValue,winSize))
+    fig = plt.figure()
+    a=fig.add_subplot(221)
+    a.imshow(image,cmap= plt.get_cmap('gray'))
+    a=fig.add_subplot(222)
+    a.hist(image.flatten(),200,range=[0,255])
+    a = fig.add_subplot(223)
+    output = histEnhance(image,cenValue,winSize)
+    a.imshow(output,cmap= plt.get_cmap('gray'))
+    a=fig.add_subplot(224)
+    a.hist(output.flatten(),200,range=[0,255])
+    plt.show()
 
 #-------------------------------------------------#
 
 #-------------------HistAdapt---------------------#
-def compareHist(inputImage,outputImage):
-    fig = plt.figure()
-    ax2 = fig.add_subplot(2, 1, 1)
-    ax3 = fig.add_subplot(2, 1, 2)
-    ax2.hist(inputImage.flatten(),200,range=[0,255])
-    ax3.hist(outputImage.flatten(),200,range=[0,255])
-    plt.show()
-
 def modifyDinamicRange(gMinNorm,gMaxNorm,gMin,gMax,g):
     a = (gMaxNorm - gMinNorm)
     b = (g - gMin)
@@ -85,15 +73,26 @@ def histAdapt(inputImage,minValue,maxValue):
     return img2
 
 def testHistAdapt(inputImage,minValue,maxValue):
-    compareImages(loadImage(inputImage),histAdapt(loadImage(inputImage),minValue,maxValue))
-    compareHist(loadImage(inputImage),histAdapt(loadImage(inputImage),minValue,maxValue))
+    fig = plt.figure()
+    a=fig.add_subplot(221)
+    showingImage(inputImage)
+    a=fig.add_subplot(222)
+    a.hist(inputImage.flatten(),200,range=[0,255])
+    a = fig.add_subplot(223)
+    output = histAdapt(inputImage,minValue,maxValue)
+    showingImage(output)
+    a=fig.add_subplot(224)
+    a.hist(output.flatten(),200,range=[0,255])
+    plt.show()
+
 #-------------------------------------------------#
 
 def filteredKernel(kernel):
     kernel = np.flipud(np.fliplr(kernel))
-    '''a = kernel.sum()
-    if a > 1:
-        kernel = kernel/a'''
+    '''if operation == 'convolve':
+        a = kernel.sum()
+        if a > 1:
+            kernel = kernel/a'''
     if ((kernel.shape[0]%2) == 0):
         aux = np.zeros((kernel.shape[0]+1,kernel.shape[1]))
         aux[1:] = kernel
@@ -156,11 +155,16 @@ def convolutionFunction(pixelImage,kernel,operation):
 def convolve(inputImage,kernel):
     return convolutionFunction(inputImage.astype(np.int64),kernel,'convolve')
     
-#showImage(abs(convolve(loadImage('lena_gray.bmp'),np.arange(16).reshape((4,4)))))
 def testConvolve(inputImage,kernel):
     output = convolve(loadImage(inputImage),kernel)
-    compareImages(loadImage(inputImage),output)
-    compareImages(loadImage(inputImage),histAdapt(output,0,255)) #hotsAdapt por si valores fuera de rango
+    fig = plt.figure()
+    a=fig.add_subplot(121)
+    a.set_title('Original')
+    a.imshow(loadImage(inputImage),cmap= plt.get_cmap('gray'))
+    a = fig.add_subplot(122)
+    a.set_title('Filtered')
+    a.imshow(histAdapt(output,0,255), vmin = 0, vmax=255,cmap= plt.get_cmap('gray'))
+    plt.show()
 
 #--------------------Gaussian---------------------#
 def dimension(sigma):
@@ -218,17 +222,34 @@ def gaussianFilter2D(inputImage,sigma):
     return convolve(A,kernel)
 
 def testGaussianFilter2D(inputImage,sigma):
-    compareImages(loadImage(inputImage),gaussianFilter2D(loadImage(inputImage),sigma))
+    image = loadImage(inputImage)
+    output = gaussianFilter2D(image,sigma)
+    fig = plt.figure()
+    a=fig.add_subplot(121)
+    a.set_title('Original')
+    a.imshow(image,cmap= plt.get_cmap('gray'))
+    a = fig.add_subplot(122)
+    a.set_title('Gaussian Filter')
+    a.imshow(output,cmap= plt.get_cmap('gray'))
+    plt.show()
 #-------------------------------------------------#
-#showImage(gaussianFilter2D(loadImage('lena_gray.bmp'),2))
+
 #------------------Median Filter------------------#
 
 def medianFilter2D(pixelImage,filterSize): #mejorarlo
     return convolutionFunction(pixelImage.astype(np.int64),filterSize,'median')
 
 def testMedianFilter2D(inputImage,filterSize):
-    compareImages(loadImage(inputImage),medianFilter2D(loadImage(inputImage),filterSize))
-
+    image = loadImage(inputImage)
+    output = medianFilter2D(image,filterSize)
+    fig = plt.figure()
+    a=fig.add_subplot(121)
+    a.set_title('Original')
+    a.imshow(image,cmap= plt.get_cmap('gray'))
+    a = fig.add_subplot(122)
+    a.set_title('Median Filter')
+    a.imshow(output,cmap= plt.get_cmap('gray'))
+    plt.show()
 #-------------------------------------------------#
 
 #------------------HighBoost----------------------#
@@ -241,9 +262,20 @@ def highBoost(inputImage,A,method,parameter):
     return ghb
 
 def testHighBoost(inputImage,A,method,parameter):
-    ghb = highBoost(loadImage(inputImage),A,method,parameter)
-    #compareImages(loadImage(inputImage),ghb)
-    compareImages(loadImage(inputImage),histAdapt(ghb,0,255))
+    image = loadImage(inputImage)
+    output = highBoost(image,A,method,parameter)
+    print(np.min(output),np.max(output))
+    fig = plt.figure()
+    a=fig.add_subplot(121)
+    a.set_title('Original')
+    a.imshow(image,cmap= plt.get_cmap('gray'))
+    a = fig.add_subplot(122)
+    if method == 'gaussian':
+        a.set_title('HighBoost (method gaussian)')
+    else:
+        a.set_title('HighBoost (method median)')
+    a.imshow(histAdapt(output,0,255),vmin = 0, vmax = 255,cmap= plt.get_cmap('gray'))
+    plt.show()
 #-------------------------------------------------#
 #-------------------------------------------------#
 def eeType(strElType,strElSize): 
@@ -366,25 +398,57 @@ def dilate(inputImage, strElType, strElSize):
 
 def erode(inputImage, strElType, strElSize):
     ee = eeType(strElType,strElSize)
-    return convolutionFunction(inputImage,ee,'erode')
+    return convolutionFunction(inputImage.astype(np.int64),ee,'erode')
 
 def testErode(inputImage, strElType,strElSize):
-    compareImages(inputImage,erode(inputImage, strElType,strElSize))
+    output = erode(inputImage,strElType,strElSize)
+    fig = plt.figure()
+    a=fig.add_subplot(121)
+    a.set_title('Original')
+    a.imshow(inputImage,cmap= plt.get_cmap('gray'))
+    a = fig.add_subplot(122)
+    a.set_title('Erode')
+    a.imshow(output,cmap= plt.get_cmap('gray'))
+    plt.show()
 
 def testDilate(inputImage,strElType,strElSize):
-    compareImages(inputImage,dilate(inputImage,strElType,strElSize))
+    output = dilate(inputImage,strElType,strElSize)
+    fig = plt.figure()
+    a=fig.add_subplot(121)
+    a.set_title('Original')
+    a.imshow(inputImage,cmap= plt.get_cmap('gray'))
+    a = fig.add_subplot(122)
+    a.set_title('Dilate')
+    a.imshow(output,cmap= plt.get_cmap('gray'))
+    plt.show()
 
 def opening(inputImage, strElType,strElSize):
     return dilate(erode(inputImage,strElType,strElSize,),strElType,strElSize)
 
 def testOpening(inputImage,strElType,strElSize):
-    compareImages(inputImage,opening(inputImage,strElType,strElSize))
+    output = opening(inputImage,strElType,strElSize)
+    fig = plt.figure()
+    a=fig.add_subplot(121)
+    a.set_title('Original')
+    a.imshow(inputImage,cmap= plt.get_cmap('gray'))
+    a = fig.add_subplot(122)
+    a.set_title('Opening')
+    a.imshow(output,cmap= plt.get_cmap('gray'))
+    plt.show()
 
 def closing(inputImage, strElType,strElSize):
     return erode(dilate(inputImage,strElType,strElSize,),strElType,strElSize)
 
 def testClosing(inputImage,strElType,strElSize):
-    compareImages(inputImage,closing(inputImage,strElType,strElSize))
+    output = closing(inputImage,strElType,strElSize)
+    fig = plt.figure()
+    a=fig.add_subplot(121)
+    a.set_title('Original')
+    a.imshow(inputImage,cmap= plt.get_cmap('gray'))
+    a = fig.add_subplot(122)
+    a.set_title('Closing')
+    a.imshow(output,cmap= plt.get_cmap('gray'))
+    plt.show()
 
 def tophatFilter(inputImage,strElType,strElSize,mode):
     if mode == 'white':
@@ -392,6 +456,20 @@ def tophatFilter(inputImage,strElType,strElSize,mode):
     elif mode == 'black':
         img = np.subtract(inputImage,closing(inputImage,strElType,strElSize).astype(np.int64))
     return img
+
+def testTopHat(inputImage,strElType,strElSize,mode):
+    output = tophatFilter(inputImage,strElType,strElSize,mode)
+    fig = plt.figure()
+    a=fig.add_subplot(121)
+    a.set_title('Original')
+    a.imshow(inputImage,cmap= plt.get_cmap('gray'))
+    a = fig.add_subplot(122)
+    if mode == 'white':
+        a.set_title('TopHat (mode white)')
+    else:
+        a.set_title('TopHat (mode black)')
+    a.imshow(output,cmap= plt.get_cmap('gray'))
+    plt.show()
 #----------Operadores de primera derivada---------#
 
 def gxRoberts():
@@ -476,11 +554,25 @@ def derivatives(inputImage,operator):
         return centralDiffOperator(inputImage)
 
 def testDerivatives(inputImage,operator):
-    gx,gy = derivatives(loadImage(inputImage),operator)
-    compareImages(abs(gx),abs(gy))
-    showImage(abs(gx)+abs(gy))
+    image = loadImage(inputImage)
+    gx,gy = derivatives(image,operator)
+    fig = plt.figure()
+    a=fig.add_subplot(221)
+    a.set_title('Original')
+    a.imshow(image,cmap= plt.get_cmap('gray'))
+    a = fig.add_subplot(222)
+    a.set_title('gx')
+    a.imshow(abs(gx),cmap= plt.get_cmap('gray'))
+    a = fig.add_subplot(223)
+    a.set_title('gy')
+    a.imshow(abs(gy),cmap= plt.get_cmap('gray'))
+    a = fig.add_subplot(224)
+    a.set_title('gx+gy')
+    a.imshow((abs(gx)+abs(gy)),cmap= plt.get_cmap('gray'))
+    plt.show()
 #-------------------------------------------------#
 
+#-------------------------------------------------#
 # Canny
 def edgeCanny(inputImage,sigma,tlow,thigh):
     smooth = gaussianFilter2D(inputImage,sigma)     # Suavizado gaussiano
@@ -582,19 +674,41 @@ def edgeCanny(inputImage,sigma,tlow,thigh):
                     l2 = l2-1
     return H 
         
-#edgeCanny(loadImage('lena_gray.bmp'),0.625,30,50)
-
-# Harris
-#----------------------Tests----------------------#
-#testWindowLevelContrastEnhancement('lena_gray.bmp',100,20)
-#testHistAdapt('lena_gray.bmp',100,200)
-#testConvolve('lena_gray.bmp',np.array(([1,1,1],[1,11,1],[1,1,1])).reshape((3,3)))
-#testGaussianFilter2D('lena_gray.bmp',3)
-#testMedianFilter2D('lena_gray.bmp',(5,4))
-#testHighBoost('lena_gray.bmp',3,'median',(11,11))
-#testErode(exampleImage2(),'lineh',(1,2))
-#testDilate(exampleImage(),'square',(3,3))
-#testOpening(exampleImage(),'square',(3,3))
-#testClosing(exampleImage(),'square',(3,3))
-#testDerivatives('lena_gray.bmp','Roberts')
+def testEdgeCanny(inputImage,sigma,tlow,thigh):
+    image = loadImage(inputImage)
+    output=edgeCanny(image,sigma,tlow,thigh)
+    fig = plt.figure()
+    a=fig.add_subplot(121)
+    a.set_title('Original')
+    a.imshow(image,cmap= plt.get_cmap('gray'))
+    a = fig.add_subplot(122)
+    a.set_title('Canny')
+    a.imshow(output,cmap= plt.get_cmap('gray'))
+    plt.show()
 #-------------------------------------------------#
+
+#-------------------------------------------------#
+# Harris
+def cornerHarris(inputImage,sigmaD,sigmaI,t):
+    gD = gaussianFilter2D(inputImage,sigmaD)
+    gx,gy = derivatives(gD,'Sobel')
+    Ix2 = gx**2
+    Iy2 = gy**2
+    IxIy = gx*gy
+    gIx2 = gaussianFilter2D(Ix2,sigmaI)
+    gIy2 = gaussianFilter2D(Iy2,sigmaI)
+    gIxIy = gaussianFilter2D(IxIy,sigmaI)
+    DgIx2 = (sigmaD**2)*gIx2
+    DgIy2 = (sigmaD**2)*gIy2
+    DgIxIy = (sigmaD**2)*gIxIy
+    '''showImage(Ix2)
+    showImage(Iy2)
+    showImage(IxIy)
+    showImage(gIx2)
+    showImage(gIy2)
+    showImage(gIxIy)
+    showImage(DgIx2)
+    showImage(DgIy2)
+    showImage(DgIxIy)'''
+#-------------------------------------------------#
+#cornerHarris(loadImage('lena_gray.bmp'),0.625,1,100)
