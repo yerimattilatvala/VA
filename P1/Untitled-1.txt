@@ -1,0 +1,280 @@
+def eeType(strElType,strElSize):
+    if strElType == 'square':
+        if (strElSize[0]%2) == 0 and (strElSize[1]%2) == 0:
+            m = np.ones((strElSize[0]+1,strElSize[1]+1),dtype=int)
+            for (x,y), value in np.ndenumerate(m):
+                if x == 0 or y == strElSize[1]:
+                    m[x,y] = 0
+        else: 
+            m = np.ones(strElSize,dtype=int)
+        return m
+    elif strElType == 'cross' :
+        m1 = np.zeros(strElSize,dtype=int)
+        for (x,y), value in np.ndenumerate(m1):
+            if x == int((strElSize[0]-1)/2) or y == int((strElSize[1]-1)/2):
+                m1[x,y] = 1
+        return m1
+    elif strElType == 'linev' :
+        if (strElSize[0]%2) == 0:
+            m1 = np.ones((strElSize[0]+1,strElSize[1]),dtype=int)
+            m1[0]= 0
+        else:
+            m1 = np.ones(strElSize,dtype=int)
+        return m1
+    elif strElType == 'lineh' :
+        print()
+        if (strElSize[1]%2) == 0:
+            m1 = np.ones((strElSize[0],strElSize[1]+1),dtype=int)
+            m1[0,strElSize[1]] = 0
+        else:
+            m1 = np.ones(strElSize,dtype=int)
+        return m1
+
+def onesInImages(EE):
+    r = EE.shape[0]-1
+    c = []
+    for (x,y),value in np.ndenumerate(EE):
+        if value == 1 or value == 255:
+            x1 =abs(x - r)
+            c.append((x1,y)) 
+    return np.array(c,dtype=('int,int'))
+
+def isInside(a,onesImage,onesKernel):
+    aux = 255
+    for i in onesKernel:
+        d = a[0] + i[0],a[1]+i[1]
+        v = d in onesImage
+        if v == False:
+            aux = 0
+    return aux
+
+def erodeFunction(image,kernel):
+    kernelDimensions = kernel.shape
+    onesImage = onesInImages(image).tolist()
+    onesKernel = onesInImages(kernel)
+    r,c = image.shape[0],image.shape[1]
+    rowsKernel = kernelDimensions[0] -1
+    colsKernel = kernelDimensions[1] -1
+    limitRow = r - int(rowsKernel/2) 
+    limitCol = c - int(colsKernel/2)
+    initRow = int((rowsKernel/2))
+    initCol = int(colsKernel/2)
+    aux = np.zeros((image.shape),dtype=int)
+    for (x,y),value in np.ndenumerate(image):
+        if (x < initRow or y < initCol) or (x >= limitRow or y >= limitCol):
+            aux[x,y] = value
+        else:
+            if value == 255:
+                x1 = abs(x-(r-1))
+                aux[x,y] = isInside((x1,y),onesImage,onesKernel)
+    aux = aux.astype(np.uint8)
+    return aux    
+    
+def erode(inputImage, strElType,strElSize):
+    kernel = eeType(strElType,strElSize)
+    return erodeFunction(inputImage,kernel)
+
+
+
+def exampleImage2():
+    m = np.zeros((24,24),dtype=int)
+    for (x,y), value in np.ndenumerate(m):
+        if y == 5 or y == 7 or y == 11 or y ==13 or y == 17:
+            m[x,y] = 255
+    return m
+
+def testErode(inputImage, strElType,strElSize):
+    compareImages(inputImage,erode(inputImage, strElType,strElSize))
+
+def onesInsideImage(image,kernelDimensions):
+    r,c = image.shape[0],image.shape[1]
+    rowsKernel = kernelDimensions[0] -1
+    colsKernel = kernelDimensions[1] -1
+    limitRow = r - int(rowsKernel/2) 
+    limitCol = c - int(colsKernel/2)
+    initRow = int((rowsKernel/2))
+    initCol = int(colsKernel/2)
+    c = []
+    for (x,y),value in np.ndenumerate(image):
+        if (x >= initRow and y >= initCol) and (x < limitRow and y < limitCol):
+            if value == 255  :
+                x1 =abs(x - (r-1))
+                c.append((x1,y)) 
+    return c
+
+def appendPoint(onesImage,onesEE):
+    c = onesImage
+    aux = []
+    for i in onesImage:
+        for j in onesEE:
+            d = i[0]+j[0],i[1]+j[1]
+            if (d in c) == False:
+                #print(i,'+',j,'=',d)
+                aux.append(d)
+    return np.array(aux,dtype=('int,int'))
+
+def dilateFunction(image,kernel):
+    kernelDimensions = kernel.shape
+    onesImage = onesInsideImage(image,kernelDimensions)
+    onesKernel = onesInImages(kernel)
+    r,c = image.shape[0],image.shape[1]
+    rowsKernel = kernelDimensions[0] -1
+    colsKernel = kernelDimensions[1] -1
+    limitRow = r - int(rowsKernel/2) 
+    limitCol = c - int(colsKernel/2)
+    initRow = int((rowsKernel/2))
+    initCol = int(colsKernel/2)
+    m = appendPoint(onesImage,onesKernel).tolist()
+    aux = np.zeros((image.shape),dtype=int)
+    for (x,y),value in np.ndenumerate(image):
+        if (x < initRow or y < initCol) or (x >= limitRow or y >= limitCol):
+                aux[x,y] = value
+        else:
+            x1 = abs(x-(r-1))
+            d = x1,y
+            if (d in m) == True:
+                aux[x,y] = 255
+            else:
+                aux[x,y] = value
+
+    aux = aux.astype(np.uint8)
+    return aux    
+
+def dilate(inputImage, strElType,strElSize):
+    EE = eeType(strElType,strElSize)
+    return dilateFunction(inputImage,EE)
+
+def testDilate(inputImage,strElType,strElSize):
+    compareImages(inputImage,dilate(inputImage,strElType,strElSize))
+
+def opening(inputImage, strElType,strElSize):
+    return dilate(erode(inputImage,strElType,strElSize,),strElType,strElSize)
+
+def testOpening(inputImage,strElType,strElSize):
+    compareImages(inputImage,opening(inputImage,strElType,strElSize))
+
+def closing(inputImage, strElType,strElSize):
+    return erode(dilate(inputImage,strElType,strElSize,),strElType,strElSize)
+
+def testClosing(inputImage,strElType,strElSize):
+    compareImages(inputImage,closing(inputImage,strElType,strElSize))
+
+#-------------------------------------------------#
+showImage(exampleImage())'''
+
+
+mediana
+
+def medianFilter2D(pixelImage,filterSize):
+    rowsKernel = filterSize[0] 
+    colsKernel = filterSize[1] 
+    initRow = int((rowsKernel-1)/2)
+    initCol = int((colsKernel-1)/2)
+    limitRow = pixelImage.shape[0] - initRow
+    limitCol = pixelImage.shape[1] - initCol
+    aux = np.zeros_like(pixelImage)
+
+    for (x,y), value in np.ndenumerate(pixelImage):
+        if (x < initRow or y < initCol) or (x >= limitRow or y >= limitCol):
+            aux[x,y] = value
+        else:
+            aux[x,y] = np.median(pixelImage[(x-initRow):(x+initRow+1),(y-initCol):(y+initCol+1)])
+    aux = aux.astype(np.uint8)
+    return aux
+
+def dilate(inputImage,strElType,strElSize):
+    ee = eeType(strElType,strElSize)
+    rowsKernel = ee.shape[0] 
+    colsKernel = ee.shape[1] 
+    initRow = int((rowsKernel-1)/2)
+    initCol = int((colsKernel-1)/2)
+    image_padded = np.zeros((inputImage.shape[0] + (rowsKernel -1 ), inputImage.shape[1] + (colsKernel-1)))
+
+    output = np.zeros_like(inputImage)
+
+    for x in range(inputImage.shape[0]):
+        for y in range(inputImage.shape[1]):
+            if inputImage[x,y] == 255 or inputImage[x,y] ==1:
+                image_padded[x:(x+rowsKernel),y:(y+colsKernel)] = ee*255 + image_padded[x:(x+rowsKernel),y:(y+colsKernel)]
+
+    if (colsKernel -1) == 0 and (rowsKernel -1 ) == 0: #caso kernel 1x1
+          output = image_padded 
+    elif (colsKernel -1) == 0: 
+        output = image_padded[initRow:-initRow]
+    elif (rowsKernel -1 ) == 0:
+        output = image_padded[0:,initCol:-initCol]
+    else:
+         output = image_padded[initRow:-initRow,initCol:-initCol]
+    
+    return output.astype(np.uint8)
+
+#erode falla con valores pares
+def erode(inputImage,strElType,strElSize):
+    ee = eeType(strElType,strElSize)
+    rowsKernel = ee.shape[0] 
+    colsKernel = ee.shape[1] 
+    initRow = int((rowsKernel-1)/2)
+    initCol = int((colsKernel-1)/2)
+    image_padded = np.zeros((inputImage.shape[0] + (rowsKernel -1 ), inputImage.shape[1] + (colsKernel-1)))
+    if (colsKernel -1) == 0 and (rowsKernel -1 ) == 0: #caso kernel 1x1
+          image_padded = inputImage
+    elif (colsKernel -1) == 0: 
+        image_padded[initRow:-initRow] = inputImage
+    elif (rowsKernel -1 ) == 0:
+        image_padded[0:,initCol:-initCol] = inputImage
+    else:
+         image_padded[initRow:-initRow,initCol:-initCol] = inputImage
+    
+    output = np.zeros_like(inputImage)
+    for x in range(inputImage.shape[0]):
+        for y in range(inputImage.shape[1]):
+            if inputImage[x,y] == 255 or inputImage[x,y] ==1:
+                aux = np.ones(ee.shape)
+                #print(aux*inputImage[x,y],ee*inputImage[x,y],image_padded[x:(x+rowsKernel),y:(y+colsKernel)])
+                if ((np.allclose((ee*inputImage[x,y]),image_padded[x:(x+rowsKernel),y:(y+colsKernel)])) ==True) :
+                    output[x,y] = 255
+    return output.astype(np.uint8)
+
+    rowsKernel = filterSize[0]
+    colsKernel = filterSize[1]
+    if ((rowsKernel % 2) == 0):
+        rowsKernel1 = rowsKernel
+        rowsKernel = rowsKernel +1
+    else:
+        rowsKernel1 = rowsKernel
+    if ((colsKernel % 2) == 0):
+        colsKernel1  = colsKernel
+        colsKernel = colsKernel +1
+    else:
+        colsKernel1 = colsKernel
+
+    initRow = int((rowsKernel-1)/2)
+    initCol = int((colsKernel-1)/2)
+    image_padded = np.zeros((pixelImage.shape[0] + (rowsKernel -1 ), pixelImage.shape[1] + (colsKernel-1)))
+    if (colsKernel -1) == 0 and (rowsKernel -1 ) == 0: #caso kernel 1x1
+          image_padded = pixelImage
+    elif (colsKernel -1) == 0: 
+        image_padded[initRow:-initRow] = pixelImage
+    elif (rowsKernel -1 ) == 0:
+        image_padded[0:,initCol:-initCol] = pixelImage
+    else:
+         image_padded[initRow:-initRow,initCol:-initCol] = pixelImage
+    aux = np.zeros_like(pixelImage)
+
+    for x in range(pixelImage.shape[0]):
+        for y in range(pixelImage.shape[1]):
+            
+    return aux
+
+    if (value >112.5 and value < 157.5) or (value < -112.5 and value > -157.5):
+            n1 = window[0,0].astype(np.float)
+            n2 = window[2,2].astype(np.float)
+        elif (value > 67.5 and value < 112.5) or (value < -67.5 and value > -112.5) :
+            n1 = window[0,1].astype(np.float)
+            n2 = window[2,1].astype(np.float)
+        elif (value > 22.5 and value < 67.5) or (value < -22.5 and value > -67.5):
+            n1 = window[0,2].astype(np.float)
+            n2 = window[2,0].astype(np.float)
+        elif (value > -22.5 and value < 22.5) or (value >157.5 and value <-157.5) :
+            n1 = window[1,0].astype(np.float)
+            n2 = window[1,2].astype(np.float)
