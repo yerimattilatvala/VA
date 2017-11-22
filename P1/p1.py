@@ -153,7 +153,7 @@ def convolutionFunction(pixelImage,kernel,operation):
     return aux
 
 def convolve(inputImage,kernel):
-    return convolutionFunction(inputImage.astype(np.int64),kernel,'convolve')
+    return convolutionFunction(inputImage.astype(np.float64),kernel,'convolve')
     
 def testConvolve(inputImage,kernel):
     output = convolve(loadImage(inputImage),kernel)
@@ -218,12 +218,14 @@ def gaussKernelNxN(sigma):
 
 def gaussianFilter2D(inputImage,sigma):
     kernel = gaussKernel1D(sigma)
-    A = convolve(inputImage,np.transpose(kernel))
-    return convolve(A,kernel)
+    A = convolve(inputImage,kernel)
+    return convolve(A,np.transpose(kernel))
 
-def testGaussianFilter2D(inputImage,sigma):
-    image = loadImage(inputImage)
+def testGaussianFilter2D(image,sigma):
+    #image = loadImage(inputImage)
     output = gaussianFilter2D(image,sigma)
+    print(gaussKernel1D(sigma))
+    print(np.min(output),np.max(output))
     fig = plt.figure()
     a=fig.add_subplot(121)
     a.set_title('Original')
@@ -553,8 +555,8 @@ def derivatives(inputImage,operator):
     elif operator == 'CentralDiff':
         return centralDiffOperator(inputImage)
 
-def testDerivatives(inputImage,operator):
-    image = loadImage(inputImage)
+def testDerivatives(image,operator):
+    #image = loadImage(inputImage)
     gx,gy = derivatives(image,operator)
     fig = plt.figure()
     a=fig.add_subplot(221)
@@ -611,11 +613,15 @@ def edgeCanny(inputImage,sigma,tlow,thigh):
         elif (value == 0.0):
             n1 = window[1,0]
             n2 = window[1,2]
-        if (magnitude[x,y] > n1 and magnitude[x,y] > n2):
+        if value ==135.0 and (n1 > magnitude[x,y] or n2 > magnitude[x,y]) :
+            In[x,y] = 0
+        else:
             In[x,y] = magnitude[x,y]
+        '''if (magnitude[x,y] > n1 and magnitude[x,y] > n2):
+            In[x,y] = magnitude[x,y]'''
     #Fin supresión no maxima
     #Proceso de histeresis
-    visitados = []
+    '''visitados = []
     H = np.zeros_like(In)
     for (x,y),value in np.ndenumerate(orientation):
         if (In[x,y] > thigh) and (((x,y) in visitados) == False):
@@ -672,7 +678,8 @@ def edgeCanny(inputImage,sigma,tlow,thigh):
                     k2 = k2+1 
                     l1 = l1+1
                     l2 = l2-1
-    return H 
+    '''
+    return In
         
 def testEdgeCanny(inputImage,sigma,tlow,thigh):
     image = loadImage(inputImage)
@@ -712,3 +719,34 @@ def cornerHarris(inputImage,sigmaD,sigmaI,t):
     showImage(DgIxIy)'''
 #-------------------------------------------------#
 #cornerHarris(loadImage('lena_gray.bmp'),0.625,1,100)
+
+def funcion1(inputImage):
+    ha = histAdapt(inputImage,92,164)
+    output = histEnhance(ha,128,32)
+    fig = plt.figure()
+    a=fig.add_subplot(121)
+    a.imshow(inputImage,vmin = 0, vmax = 255, cmap= plt.get_cmap('gray'))
+    a=fig.add_subplot(122)
+    a.imshow(output,vmin = 0, vmax = 255,cmap= plt.get_cmap('gray'))
+    plt.show()
+    return output
+
+#funcion1(loadImage('histogram2.png'))
+
+testEdgeCanny('canny2.png',1,0,0)
+
+image = np.zeros((257,257))
+image[(int((image.shape[0]-1)/2)),(int((image.shape[1]-1)/2))] = 1
+def logFilter(inputImage,sigma):
+    g = gaussianFilter2D(inputImage,sigma)
+    gx,gy = derivatives(g,'CentralDiff')
+    output = (gx**2)+(gy**2)
+    fig = plt.figure()
+    a=fig.add_subplot(121)
+    a.imshow(inputImage, cmap= plt.get_cmap('gray'))
+    a=fig.add_subplot(122)
+    a.imshow(output,cmap= plt.get_cmap('gray'))
+    plt.show()
+    return output
+
+#logFilter(image,20)
