@@ -26,9 +26,9 @@ def detect(image):
             leftPartEye = eye[:,:int(round(eye.shape[1]/2))]
             rightPartEye = eye[:,int(round(eye.shape[1]/2)):]
             if ((np.sum(leftPartEye == 255))>(np.sum(rightPartEye == 255))):
-                look = 'Left'
+                look = 'Right' 
             else:
-                look = 'Right'    
+                look = 'Left'    
     return img,look  
 
 def show(image,side):

@@ -1,0 +1,14 @@
+Primera aproximacion:
+    -Usar clasificadore haarcascade_eye
+    -Detectar caras y ojos
+    -Una vez detectados ojos, seleccionar region de cada ojo:
+        -Mirar cantidad de pixeles blancos en las respectivas regiones
+        -Comparar la cantidad de pixeles blancos en cada ojo y determinar direccion
+
+FALLA :
+    -Imagenes oscuras no detecta bien el rostro y por tanto ya no busca los ojos.
+    -En ciertas imagenes se equivoca en la orientacion
+URLs : https://docs.opencv.org/3.3.0/d7/d8b/tutorial_py_face_detection.html
+
+Segunda aproximacion:
+    
