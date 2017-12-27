@@ -1,0 +1,2 @@
+python processFace.py -i imagen.jpg
+Arriba tambien puedes pasar el path
