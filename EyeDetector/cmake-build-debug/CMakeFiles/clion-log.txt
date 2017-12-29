@@ -1,0 +1,4 @@
+/home/david/bin/clion/bin/cmake/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /home/david/Documents/cuarto/VA/P2/EyeDetector
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/david/Documents/cuarto/VA/P2/EyeDetector/cmake-build-debug

@@ -30,5 +30,6 @@ def homomorphicFilter(image):
 
     result_interm = np.real(np.fft.ifft2(np.fft.ifftshift(result_filter)))
     result = np.exp(result_interm)
+    COLOR_YCrCb2BGR 
     return result
     
