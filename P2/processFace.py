@@ -60,12 +60,30 @@ ojoIzquierdo_g = cv2.equalizeHist(ojoIzquierdo_g)
 #ojoIzquierdo_g = cv2.bilateralFilter(ojoIzquierdo_g,9,75,75)
 #ojoDerecho_g = auto_canny(ojoDerecho_g)
 #ojoIzquierdo_g = auto_canny(ojoIzquierdo_g)
-detectC(ojoDerecho)
-detectC(ojoIzquierdo)
-#---------------------------------------------------------------------------#
+#detectC(ojoDerecho)
+#detectC(ojoIzquierdo)
+L1 = hougN(ojoDerecho)
+L2 = hougN(ojoIzquierdo)
+#hsv(ojoDerecho)
+#hsv(ojoIzquierdo)
+lookSide = L1 + L2
+print (lookSide)
+'''lookSide = [] #lista para guardar la distintas direcciones de los ojos que puede pillar(A LO MEJOR SE PUEDEN ELIMINAR AQUELLOS QUE NO CREAMOS UTILES)
 
-#---------------------------------------------------------------------------#
+lookSide.append(plantilla(ojoDerecho_g))
 
+lookSide.append(plantilla(ojoIzquierdo_g))
+print(lookSide)'''
+#---------------------------------------------------------------------------#
+side = 'undefined'
+if not lookSide:
+    print("No se ha definido la direccion de la mirada\n")
+    sys.exit()
+elif ((lookSide.count('Right')) == (len(lookSide))) or ((lookSide.count('Right')) > (lookSide.count('Left'))):
+    side = 'Right'
+elif ((lookSide.count('Left')) == (len(lookSide))) or ((lookSide.count('Right')) < (lookSide.count('Left'))):
+    side = 'Left'
+#---------------------------------------------------------------------------#
 #--------------------------------VISUALIZAMOS-------------------------------#
 #---------------------------------------------------------------------------#
 font                   = cv2.FONT_HERSHEY_SIMPLEX
@@ -73,8 +91,8 @@ bottomLeftCornerOfText = (10,500)
 fontScale              = 1
 fontColor              = (255,255,255)
 lineType               = 2
-#cv2.putText(img ,side, bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
-cv2.imshow("",face)
+cv2.putText(img ,side, bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
+cv2.imshow(side,img)
 k = cv2.waitKey(0)
 if k == 27:         # wait for ESC key to exit
     cv2.destroyAllWindows()

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
  
-imagen = cv2.imread('opencv_logo.png')
+imagen = cv2.imread('ojo2.jpg')
 hsv = cv2.cvtColor(imagen, cv2.COLOR_BGR2HSV)
  
 #Rango de colores detectados:
