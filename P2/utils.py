@@ -13,6 +13,19 @@ from skimage.draw import ellipse_perimeter
 from skimage import exposure
 
 
+def aumentarContraste(img):
+    # CLAHE (Contrast Limited Adaptive Histogram Equalization)
+    clahe = cv2.createCLAHE(clipLimit=3., tileGridSize=(8,8))
+
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)  # convert from BGR to LAB color space
+    l, a, b = cv2.split(lab)  # split on 3 different channels
+
+    l2 = clahe.apply(l)  # apply CLAHE to the L-channel
+
+    lab = cv2.merge((l2,a,b))  # merge channels
+    img2 = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert from LAB to BGR
+    return img2
+
 
 def kMeans(img,k):
     Z = img.flatten()
@@ -30,6 +43,33 @@ def kMeans(img,k):
     res = center[label.flatten()]
     res2 = res.reshape((img.shape))
     return res2
+
+
+def coord(img):
+    cv2.imshow('asda',img)
+    k = cv2.waitKey(0)
+    if k == 27:         # wait for ESC key to exit
+        cv2.destroyAllWindows()
+    arriba = []
+    exit = 0
+    for x in range(img.shape[0]):
+        if exit == 1:
+            break
+        for y in range(img.shape[1]):
+            #print(img[x,y])
+            if (np.max(img[x,y])) == 255:
+                print('entra',x,y)
+                arriba.append(x)
+                arriba.append(y)
+                exit = 1
+                break
+    print(arriba)
+    print(img.shape)
+    cv2.imshow('asda',img[:arriba[0],:])
+    k = cv2.waitKey(0)
+    if k == 27:         # wait for ESC key to exit
+        cv2.destroyAllWindows()
+
 
 def hsv(imagen):
     hsv = cv2.cvtColor(imagen, cv2.COLOR_BGR2HSV)
@@ -160,86 +200,6 @@ def elip(image):
 
     ax2.set_title('Edge (white) and result (red)')
     ax2.imshow(edges)
-
-
-def hougN(image):
-    width = 150
-    h,w = image.shape[0],image.shape[1]
-    r = width / float(w)
-    dim = (width, int(h * r))
-    
-    image = aumentarContraste(image)
-    image = cv2.resize(image, dim, interpolation = cv2.INTER_AREA)
-    image = cv2.fastNlMeansDenoisingColored(image,None,11,11,7,21)
-
-    image = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-    #image = cv2.equalizeHist(image)
-    #v_min, v_max = np.percentile(image, (0.2, 99.8))
-    #image = exposure.rescale_intensity(image, in_range=(v_min, v_max))
-    '''ret,image = cv2.threshold(image,20,255,cv2.THRESH_BINARY)
-    cv2.imshow("",image)
-    k = cv2.waitKey(0)
-    if k == 27:         # wait for ESC key to exit
-        cv2.destroyAllWindows()'''
-    image =  cv2.GaussianBlur(image,(7,7),7.6)
-    image = cv2.equalizeHist(image)
-    edges = canny(image, sigma=2, low_threshold=15, high_threshold=50)
-    #image2 = kMeans(image,4)
-    # Detect two radii
-    hough_radii = np.arange(20, 30, 1)
-    hough_res = hough_circle(edges, hough_radii)
-
-    # Select the most prominent 5 circles
-    accums, cx, cy, radii = hough_circle_peaks(hough_res, hough_radii,
-                                            total_num_peaks=3)
-    #print(accums,cx,cy,radii)
-    
-    '''for center_y, center_x, radius in zip(cy, cx, radii):
-        value = image[cx,cy]
-        if value <= 30:'''
-    part = int(round(image.shape[0]/3))   
-    cv2.imshow("",image[part:(2*part),:])
-    k = cv2.waitKey(0)
-    if k == 27:         # wait for ESC key to exit
-        cv2.destroyAllWindows()
-    # Draw them
-    valores = []
-    for center_y, center_x, radius in zip(cy, cx, radii):
-        valores.append(image[center_y,center_x])
-    #print(valores)
-    minimo = np.amin(valores)
-    #print(minimo)
-    mitad = int(round(image.shape[1]/2))
-    cv2.imshow("",image[:,:mitad])
-    k = cv2.waitKey(0)
-    if k == 27:         # wait for ESC key to exit
-        cv2.destroyAllWindows()
-    cv2.imshow("",image[:,mitad:])
-    k = cv2.waitKey(0)
-    if k == 27:         # wait for ESC key to exit
-        cv2.destroyAllWindows()
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 4))
-    image1 = color.gray2rgb(image)
-    side = []
-    for center_y, center_x, radius in zip(cy, cx, radii):
-
-        value = image[center_y,center_x]
-        if (center_y > part) and (center_y < (2*part)) and (value == minimo):
-            if (center_x < mitad):
-                side.append('Right')
-            elif (center_x > mitad):
-                side.append('Left')
-            else:
-                side.append('Center')
-            #cv2.rectangle(image1,(center_x,center_y),(center_x,center_y),(0,255,0),2)
-            #cv2.rectangle(image1,(center_x,center_y),(center_x,center_y),(255,0,0),2)
-            #print(center_x,center_y)
-            circy, circx = circle_perimeter(center_y, center_x, radius)
-            image1[circy, circx] = (220, 20, 20)
-
-    ax.imshow(image1, cmap=plt.cm.gray)
-    plt.show()
-    return side
 
 
 def draw_circles(img, circles):
@@ -380,6 +340,24 @@ def detectC(bgr_img):
     plt.subplot(122),plt.imshow(cimg)
     plt.title('Hough Transform'), plt.xticks([]), plt.yticks([])
     plt.show()
+
+
+'''for center_y, center_x, radius in zip(cy, cx, radii):
+
+    value = image[center_y,center_x]
+    if (center_y > part) and (center_y < (2*part)) and (value == minimo):
+        if (center_x < mitad):
+            side.append('Right')
+        elif (center_x > mitad):
+            side.append('Left')
+        else:
+            side.append('Center')
+        #cv2.rectangle(image1,(center_x,center_y),(center_x,center_y),(0,255,0),2)
+        #cv2.rectangle(image1,(center_x,center_y),(center_x,center_y),(255,0,0),2)
+        #print(center_x,center_y)
+        circy, circx = circle_perimeter(center_y, center_x, radius)
+        image1[circy, circx] = (220, 20, 20)'''
+
 
 '''if bgr_img.shape[-1] == 3:           # color image
     b,g,r = cv2.split(bgr_img)       # get b,g,r

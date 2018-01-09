@@ -20,6 +20,16 @@ Segunda aproximacion:
     (Fallan dos un par de ejemplos en de cada tipo y algunos que no detecta bien la cara)
 
 Tercera aproximacion :
+-Usar detector haardcascade(face) solo para obtener region de la cara
+-Encuentro ojos dividiendo las zonas de interes de la cara
+- Primero divido la cara en 2 y cojo la mitad superior
+-En la mitad superior la divido en tres para selccionar la region entre la frente y la nariz
+    aqui se encuentran los ojos.
+-Divido la zona en tres regiones iguales y selecciono la region 1 (ojo derecho) y la region 3 (ojo izquierdo).
+-Uso una plantilla para detectar la pupila
+-Una vez detectado el centro de la pupilo, divido la imagen a la mitad y miro en que lado de la imagen cae
+
+Cuarta aproximacion :
     -Usar detector haardcascade(face) solo para obtener region de la cara
     -Encuentro ojos dividiendo las zonas de interes de la cara
     - Primero divido la cara en 2 y cojo la mitad superior
@@ -31,13 +41,5 @@ Tercera aproximacion :
     -Luego uso hough circles
     -Detecto ojos
     -Selecciono el centro del circulo y miro en que mitad de la imagen cae
-
-Cuarta aproximacion :
--Usar detector haardcascade(face) solo para obtener region de la cara
--Encuentro ojos dividiendo las zonas de interes de la cara
-- Primero divido la cara en 2 y cojo la mitad superior
--En la mitad superior la divido en tres para selccionar la region entre la frente y la nariz
-    aqui se encuentran los ojos.
--Divido la zona en tres regiones iguales y selecciono la region 1 (ojo derecho) y la region 3 (ojo izquierdo).
--Uso una plantilla para detectar la pupila
--Una vez detectado el centro de la pupilo, divido la imagen a la mitad y miro en que lado de la imagen cae
+    Izquierda menos 1 todas bien
+    Derecha: falla, demasida piel y al dividir imagen falla

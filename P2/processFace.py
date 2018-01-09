@@ -4,6 +4,7 @@ import argparse
 import imutils
 import sys
 from utils import *
+from utils2 import *
 from PIL import Image, ImageEnhance
 #from k import *
 #from filtroHomorfico import *
@@ -52,28 +53,17 @@ roi1 = roi1[int(round(f1/1.75)):,int(round(c1/4.5)):-int(round(c1/4.5))]
 part = int(round(roi1.shape[1]/3))
 ojoDerecho = roi1[:,:part]
 ojoIzquierdo = roi1[:,2*part:]
-ojoDerecho_g = cv2.cvtColor(ojoDerecho,cv2.COLOR_BGR2GRAY)
-ojoIzquierdo_g = cv2.cvtColor(ojoIzquierdo,cv2.COLOR_BGR2GRAY)
-ojoDerecho_g = cv2.equalizeHist(ojoDerecho_g) 
-ojoIzquierdo_g = cv2.equalizeHist(ojoIzquierdo_g) 
-#ojoDerecho_g = cv2.bilateralFilter(ojoDerecho_g,9,75,75)
-#ojoIzquierdo_g = cv2.bilateralFilter(ojoIzquierdo_g,9,75,75)
-#ojoDerecho_g = auto_canny(ojoDerecho_g)
-#ojoIzquierdo_g = auto_canny(ojoIzquierdo_g)
-#detectC(ojoDerecho)
-#detectC(ojoIzquierdo)
-L1 = hougN(ojoDerecho)
-L2 = hougN(ojoIzquierdo)
+lookSide = []
+L1,d1,i1 = hougN(ojoDerecho)
+L2,d2,i2 = hougN(ojoIzquierdo)
 #hsv(ojoDerecho)
 #hsv(ojoIzquierdo)
 lookSide = L1 + L2
+if (d1+d1)>(i1+i2):
+    lookSide.append('Left')
+else:
+    lookSide.append('Right')
 print (lookSide)
-'''lookSide = [] #lista para guardar la distintas direcciones de los ojos que puede pillar(A LO MEJOR SE PUEDEN ELIMINAR AQUELLOS QUE NO CREAMOS UTILES)
-
-lookSide.append(plantilla(ojoDerecho_g))
-
-lookSide.append(plantilla(ojoIzquierdo_g))
-print(lookSide)'''
 #---------------------------------------------------------------------------#
 side = 'undefined'
 if not lookSide:
