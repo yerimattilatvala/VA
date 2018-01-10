@@ -63,7 +63,7 @@ if (d1+d1)>(i1+i2):
     lookSide.append('Left')
 else:
     lookSide.append('Right')
-print (lookSide)
+#print (lookSide)
 #---------------------------------------------------------------------------#
 side = 'undefined'
 if not lookSide:

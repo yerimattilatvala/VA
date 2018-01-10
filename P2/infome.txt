@@ -40,6 +40,13 @@ Cuarta aproximacion :
     -Hago canny para extraer bordes
     -Luego uso hough circles
     -Detecto ojos
-    -Selecciono el centro del circulo y miro en que mitad de la imagen cae
+    -Selecciono el centro de la pupila y miro en que mitad de la imagen cae
+        Antes de mirar el lado del ojo en donde está, lo que hago es seleccionar
+        aquellas coordenadas que estean en la zona mas oscura(pues sera la pupila) 
+        para posteriormente hacer una media de las coordenadas y radio del hougcircles 
+        porque puede haber mas de un circulo que coincida.
+        Despues de esto miro a la izquierda y derecha de la pupila y calculo la cantidad
+        de puntos claros que hay ya que uso el algoritmo kMeans para detectar regiones
     Izquierda menos 1 todas bien
     Derecha: falla, demasida piel y al dividir imagen falla
+    MEJORADO -> falla una
