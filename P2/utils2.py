@@ -71,11 +71,36 @@ def houg2(image):
     x = int(np.mean(x))
     y = int(np.mean(y))
     radio = int(np.mean(radio))
+    image_aux = image[y-radio:y+radio,x-radio:x+radio] #se usa y para detectar
+    #image = kMeans(image,2)
+    if (x-(radio*2)) > 0:
+        dch = image[int(round(y-radio/2)):int(round(y+radio/2)),x-(radio*2):x-radio]
+        izq = image[int(round(y-radio/2)):int(round(y+radio/2)),x+radio:x+(radio*2)]
+    else:
+        print(x,radio,x-(radio+int(round(radio/5))),x-radio)
+        dch = image[int(round(y-radio/2)):int(round(y+radio/2)),x-(radio+int(round(radio/5))):x-radio]
+        izq = image[int(round(y-radio/2)):int(round(y+radio/2)),x+radio:x+radio+int(round(radio/5))]
+    #print(dch.shape,izq.shape)
+    dch = kMeans(dch,2)
+    izq = kMeans(izq,2)
+    
+    print('PARTE DERECHA BLANCO : ',np.sum(dch == np.max(dch)),'NEGRO :',np.sum(dch == np.min(dch)))
+    print('PARTE IZQUIERDA BLANCO : ',np.sum(izq == np.max(izq)),'NEGRO :',np.sum(izq == np.min(izq)))
     cv2.circle(image1,(x,y),radio,(0,255,0),2)
     cv2.imshow('',image1)
     k = cv2.waitKey(0)
     if k == 27:         # wait for ESC key to exit
         cv2.destroyAllWindows()
+    if (x < mitad):
+        side.append('Right')
+    elif (x > mitad):
+        side.append('Left')
+    else:
+        side.append('Center')
+
+    #ax.imshow(image1, cmap=plt.cm.gray)
+    #plt.show()
+    return side, np.sum(dch == np.max(dch)),np.sum(izq == np.max(izq))
 
 def hougN(image):
     width = 150
