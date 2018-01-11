@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import argparse
 import imutils
+import pylab
 import sys
 from utils import *
 from utils2 import *
@@ -51,13 +52,18 @@ roi1 = face[:int(round(f/2)),]
 f1,c1 = roi1.shape[0],roi1.shape[1]
 roi1 = roi1[int(round(f1/1.75)):,int(round(c1/4.5)):-int(round(c1/4.5))]
 part = int(round(roi1.shape[1]/3))
+#cv2.rectangle(roi1,(0,0),(0+roi1.shape[0],0+part),(0,255,0),2)
+x = 0
+y = 0
+cv2.rectangle(roi1,(x,y),(x+roi1.shape[0],y+part),(0,255,0),2)
+x = 2*part
+y = 0
+cv2.rectangle(roi1,(x,y),(x+part-1,y+part),(0,255,0),2)
 ojoDerecho = roi1[:,:part]
 ojoIzquierdo = roi1[:,2*part:]
 lookSide = []
-L1,d1,i1 = hougN(ojoDerecho)
-L2,d2,i2 = hougN(ojoIzquierdo)
-#hsv(ojoDerecho)
-#hsv(ojoIzquierdo)
+L1,d1,i1,pd = hougN(ojoDerecho)
+L2,d2,i2,pi = hougN(ojoIzquierdo)
 lookSide = L1 + L2
 if (d1+d1)>(i1+i2):
     lookSide.append('Left')
@@ -82,7 +88,16 @@ fontScale              = 1
 fontColor              = (255,255,255)
 lineType               = 2
 cv2.putText(img ,side, bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
+'''cv2.imshow(side,img)
+k = cv2.waitKey(0)
+if k == 27:         # wait for ESC key to exit
+    cv2.destroyAllWindows()'''
+
 cv2.imshow(side,img)
+cv2.imshow('Ojo derecho',ojoDerecho)
+cv2.imshow('Ojo izquierdo',ojoIzquierdo)
+cv2.imshow('Pupila derecha',pd)
+cv2.imshow('Pupila izquierda',pi)
 k = cv2.waitKey(0)
 if k == 27:         # wait for ESC key to exit
     cv2.destroyAllWindows()
