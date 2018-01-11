@@ -30,7 +30,7 @@ def houg2(image):
 
     #---------------------------------------------------------------------------#
     image = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)  #convertimos imagen a escala de grises
-    image =  cv2.GaussianBlur(image,(11,11),9)      #suavizamos con filtro gaussiano
+    image =  cv2.GaussianBlur(image,(11,11),12)      #suavizamos con filtro gaussiano
     image = cv2.equalizeHist(image)                 #mejoramos contraste
     #---------------------------------------------------------------------------#
 
@@ -126,20 +126,19 @@ def hougN(image):
     image =  cv2.GaussianBlur(image,(7,7),7.6)  #suavizamos y mejoramos contraste
     image = cv2.equalizeHist(image)
     #---------------------------------------------------------------------------#
-    edges = canny(image, sigma=2, low_threshold=15, high_threshold=50)
+    edges = canny(image, sigma=2, low_threshold=15, high_threshold=50) #DETECTAR BORDES
     
     hough_radii = np.arange(20, 30, 1)  # Aproximamos radio de la pupilas
     hough_res = hough_circle(edges, hough_radii)    # buscamos la pupila 
 
+    #coordenadas y radios
     accums, cx, cy, radii = hough_circle_peaks(hough_res, hough_radii,total_num_peaks=3)
     
-    # Draw them
+    
     valores = []
     for center_y, center_x, radius in zip(cy, cx, radii):
         valores.append(image[center_y,center_x])
-    #print(valores)
     minimo = np.amin(valores)
-    #print(minimo)
     mitad = int(round(image.shape[1]/2))
     image1 = color.gray2rgb(image)
     side = []
@@ -172,7 +171,7 @@ def hougN(image):
         dch = image[int(round(y-radio/2)):int(round(y+radio/2)),x-(radio+int(round(radio/5))):x-radio]
         izq = image[int(round(y-radio/2)):int(round(y+radio/2)),x+radio:x+radio+int(round(radio/5))]
     
-    dch = kMeans(dch,2)
+    dch = kMeans(dch,2) #divido 
     izq = kMeans(izq,2)
     '''cv2.imshow("",image1)
     k = cv2.waitKey(0)
@@ -193,15 +192,10 @@ def hougN(image):
     
     #print('PARTE DERECHA BLANCO : ',np.sum(dch == np.max(dch)),'NEGRO :',np.sum(dch == np.min(dch)))
     #print('PARTE IZQUIERDA BLANCO : ',np.sum(izq == np.max(izq)),'NEGRO :',np.sum(izq == np.min(izq)))
-    circy, circx = circle_perimeter(y,x, radio)
-    image1[circy, circx] = (220, 20, 20)
     if (x < mitad):
         side.append('Right')
     elif (x > mitad):
         side.append('Left')
     else:
         side.append('Center')
-
-    #ax.imshow(image1, cmap=plt.cm.gray)
-    #plt.show()
     return side, np.sum(dch == np.max(dch)),np.sum(izq == np.max(izq)),image1
