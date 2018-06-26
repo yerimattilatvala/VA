@@ -88,6 +88,7 @@ lineType               = 2
 cv2.putText(img ,side, bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
 
 cv2.imshow(side,img)
+cv2.imshow('roi1',roi1)
 cv2.imshow('Ojo derecho',ojoDerecho)
 cv2.imshow('Ojo izquierdo',ojoIzquierdo)
 cv2.imshow('Pupila derecha',pd)
