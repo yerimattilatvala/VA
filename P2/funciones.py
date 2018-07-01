@@ -1,5 +1,5 @@
 import cv2
-from math import sqrt
+from math import sqrt, atan2
 import numpy as np
 from matplotlib import pyplot as plt
 from filtroHomorfico import *
@@ -7,54 +7,235 @@ import skimage
 from skimage import data, color
 from skimage.transform import hough_circle, hough_circle_peaks
 from skimage.feature import canny
-from skimage.feature import corner_harris, corner_subpix, corner_peaks, blob_dog
+from skimage.feature import corner_harris, corner_subpix, corner_peaks, blob_dog, peak_local_max
 from skimage.draw import circle_perimeter
 from skimage.util import img_as_ubyte
 from skimage.transform import hough_ellipse
 from skimage.draw import ellipse_perimeter
 from skimage import exposure
-from skimage.filters import threshold_otsu, threshold_local, threshold_adaptive, laplace, gaussian
+from skimage.filters import threshold_otsu, threshold_local, threshold_adaptive, laplace, gaussian, threshold_mean, threshold_minimum
 from skimage.morphology import disk
 from skimage.filters.rank import median
+from skimage import exposure
+from skimage.morphology import erosion, dilation, opening, closing, white_tophat, binary_opening, binary_closing, binary_dilation, binary_erosion
+
 
 def punto_mediop(x1, y1, x2, y2):
     x = int((x1+x2)/2)
     y = int((y1+y2)/2)
     return x,y
 
-def aumentarContraste(img):
-    # CLAHE (Contrast Limited Adaptive Histogram Equalization)
-    clahe = cv2.createCLAHE(clipLimit=3., tileGridSize=(8,8))
-
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)  # convert from BGR to LAB color space
-    l, a, b = cv2.split(lab)  # split on 3 different channels
-
-    l2 = clahe.apply(l)  # apply CLAHE to the L-channel
-
-    lab = cv2.merge((l2,a,b))  # merge channels
-    img2 = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert from LAB to BGR
-    return img2
-
-def detectar_pupila(image):
-    
-    img = aumentarContraste(image)    #mejoramos contraste imagen en color
-    #---------------------------------------------------------------------------#
+def filtrado_pupila(image):
     width = 150
     h,w = image.shape[0],image.shape[1]     #redimensionamos imagen
     r = width / float(w)
     dim = (width, int(h * r))
-    img = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
-    #---------------------------------------------------------------------------#
-    
-    img = cv2.fastNlMeansDenoisingColored(img,None,11,11,7,21)  #eliminamos ruido
+    escalada = cv2.resize(image, dim, interpolation = cv2.INTER_AREA)
+    escala_gris = cv2.cvtColor(escalada,cv2.COLOR_BGR2GRAY)  #convertimos a escala de grises
+    escala_gris= skimage.img_as_float(escala_gris)
+    ecualizada = exposure.equalize_hist(escala_gris)
+    filtro_mediana = median(ecualizada,np.ones((5,5)))
+    apertura = opening(filtro_mediana, np.ones((5,5)))
+    cierre = closing(apertura, np.ones((9,9)))
+    '''cv2.imshow("escalada",escalada)
+    cv2.imshow("escala_gris",escala_gris)
+    cv2.imshow("ecualizada",ecualizada)
+    cv2.imshow("filtro_mediana",filtro_mediana)
+    cv2.imshow("apertura",apertura)
+    cv2.imshow("cierre",cierre)
+    k = cv2.waitKey(0)
+    if k == 27:         # wait for ESC key to exit
+        cv2.destroyAllWindows()'''
+        
+    return cierre
 
-    #---------------------------------------------------------------------------#
-    img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)  #convertimos a escala de grises
-    #
-    img = cv2.equalizeHist(img)
-    img = median(img,disk(3))
-    img =  cv2.GaussianBlur(img,(7,7),7.6)  #suavizamos y mejoramos contraste
-    #---------------------------------------------------------------------------#
+def punto_final(img, x, y):
+    cont = 0
+    ptx = x
+    for i in range(x,img.shape[1]):
+        if img[y , i] == 0:
+            ptx = i
+            break
+        cont += 1
+
+    return (ptx, y), cont
+
+def puntos_limite(img, img2, cx, cy, radio):
+    puntos = []
+    zona_interes = img[cy - int(round(radio/2)) : cy + int(round(radio/3)), :]
+    #zona_interes = img[cy - int(round(radio/2)) : cy + int(round(radio/2)), :]
+    #zona_interes = binary_opening(zona_interes, np.ones((1,5)))
+    #zona_interes = binary_erosion(zona_interes, np.ones((6,1)))
+    for (x,y), value in np.ndenumerate(zona_interes):
+        if value == 1:
+            pto, dist = punto_final(zona_interes,y,x)
+            aux = pto[0]
+            pto = (pto[0],pto[1] +cy - int(round(radio/3.5)))
+            puntos.append(((y, x+cy - int(round(radio/3.5))),pto,dist))
+            #cv2.line(img2,pto,(y,x+cy - int(round(radio/3.5))),(255,255,0),1)
+
+    ptos_d = []
+    ptos_i = []
+    for pto in puntos:
+        if pto[0][0] > cx + radio and pto[0][0] < cx + int(2.5*radio):
+            ptos_i.append(pto)
+            '''cv2.circle(img2,pto[0],1,(255,255,0),1)
+            cv2.circle(img2,pto[1],1,(255,255,0),1)'''
+        elif pto[0][0] < cx - radio and pto[0][0] > cx - int(2.5*radio):
+            ptos_d.append(pto)
+            '''cv2.circle(img2,pto[0],1,(0,255,255),1)
+            cv2.circle(img2,pto[1],1,(0,255,255),1)'''
+    
+    porcion_dch = int(round(cx/4))
+    porcion_izq = int(round((img.shape[1] - cx))/4)
+    zd_1 = []
+    zd_2 = []
+    zd_3 = []
+    zi_1 = []
+    zi_2 = []
+    zi_3 = []
+
+    for pto in ptos_d:
+        if pto[1][0] > 0 and pto[1][0] < porcion_dch:
+            zd_3.append(pto)
+            '''cv2.circle(img2,pto[0],1,(0,0,255),1)
+            cv2.circle(img2,pto[1],1,(0,0,255),1)'''
+        elif pto[1][0] < porcion_dch*2 and pto[1][0] > porcion_dch:
+            zd_2.append(pto)
+            '''cv2.circle(img2,pto[0],1,(255, 0, 0),1)
+            cv2.circle(img2,pto[1],1,(255, 0, 0),1)'''
+        elif pto[1][0] < cx and pto[1][0] >porcion_dch*2:
+            zd_1.append(pto)
+            '''cv2.circle(img2,pto[0],1,(0, 255, 0),1)
+            cv2.circle(img2,pto[1],1,(0, 255, 0),1)'''
+
+    for pto in ptos_i:
+        if pto[0][0] > cx and pto[0][0] < cx + porcion_izq:
+            zi_1.append(pto)
+            '''cv2.circle(img2,pto[0],1,(0, 255, 0),1)
+            cv2.circle(img2,pto[1],1,(0, 255, 0),1)'''
+        elif pto[0][0] < cx + (porcion_izq*2) and pto[0][0] > cx+porcion_izq:
+            zi_2.append(pto)
+            '''cv2.circle(img2,pto[0],1,(255, 0, 0),1)
+            cv2.circle(img2,pto[1],1,(255, 0, 0),1)'''
+        elif pto[0][0] > cx + (porcion_izq*2) and pto[0][0] < 150:
+            zi_3.append(pto)
+            '''cv2.circle(img2,pto[0],1,(0,0,255),1)
+            cv2.circle(img2,pto[1],1,(0,0,255),1)'''
+        
+
+
+    '''cv2.imshow("img",img[cy - int(round(radio/2)) : cy + int(round(radio/2)), :])
+    cv2.imshow("zona_interes", zona_interes.astype(float))
+    k = cv2.waitKey(0)
+    if k == 27:         # wait for ESC key to exit
+        cv2.destroyAllWindows()'''
+    return zd_1, zd_2, zd_3, zi_1, zi_2, zi_3
+
+def definir_distancia_peso(z1,z2,z3, dir, cx, cy):
+    pz1 = 50
+    pz2 = 35
+    pz3 = 15
+    '''if len(z3) == 0 and len(z2) == 0:
+        pz1 = 100
+    elif len(z1) == 0 and len(z2) == 0:
+        pz3 = 50
+    elif len(z1) == 0 and len(z3) == 0:
+        pz2 = 70
+    elif len(z1) == 0:
+        pz2 = 60
+        pz1 = 40
+    elif len(z2) == 0:
+        pz1 = 90
+        pz2 = 10
+    elif len(z3) == 0:
+        pz1 = 65
+        pz2 = 35'''
+
+    puntos = []
+
+    if len(z1) > 0 :
+        maximo1 = 0
+        pto_aux = None
+        for pto in z1:
+            dist = distancia_entre_dos_puntos(pto[dir][0], pto[dir][1],cx, cy )
+            if dist > maximo1:
+                maximo1 = dist
+                pto_aux = pto[dir]
+        puntos.append((pto_aux, maximo1, pz1, dir))
+    if len(z2) > 0 :
+        maximo2 = 0
+        pto_aux = None
+        for pto in z2:
+            dist = distancia_entre_dos_puntos(pto[dir][0], pto[dir][1],cx, cy )
+            if dist > maximo2:
+                maximo2 = dist
+                pto_aux = pto[dir]
+        puntos.append((pto_aux, maximo2, pz2, dir))
+
+    if len(z3) > 0 :
+        maximo3 = 0
+        pto_aux = None
+        for pto in z3:
+            dist = distancia_entre_dos_puntos(pto[dir][0], pto[dir][1],cx, cy )
+            if dist > maximo3:
+                maximo3 = dist
+                pto_aux = pto[dir]
+        puntos.append((pto_aux, maximo3, pz3, dir))
+    
+    return puntos
+
+def filtrado_esclerotica(image, cx, cy, radio):
+    width = 150
+    h,w = image.shape[0],image.shape[1]     #redimensionamos imagen
+    r = width / float(w)
+    dim = (width, int(h * r))
+    escalada = cv2.resize(image, dim, interpolation = cv2.INTER_AREA)
+    cv2.circle(escalada, (cx ,cy), radio, (0,0,255),1)
+    cv2.circle(escalada, (cx ,cy), 1, (0,0,255),2)
+    cv2.circle(escalada, (cx ,cy + int(round(radio/4))), 1, (0,0,255),2)
+    escala_gris = cv2.cvtColor(escalada,cv2.COLOR_BGR2GRAY)  #convertimos a escala de grises
+    escala_gris= skimage.img_as_float(escala_gris)
+    ecualizada = exposure.equalize_hist(escala_gris)
+    filtro_mediana = median(ecualizada,np.ones((11, 11)))
+    block_size = 35
+    local_thresh = threshold_local(filtro_mediana, block_size)
+    binary_local = filtro_mediana > local_thresh
+    binary_local = binary_local.astype(float)
+    umbralizada = binary_local
+    img_aux = np.zeros_like(umbralizada) + umbralizada
+    img_aux[0 : cy - radio + int(round(radio/4)), : ] = 0
+    img_aux [cy + radio - int(round(radio/4)) : , :] = 0
+    img_aux [: ,0 :radio] = 0
+    zd1,zd2,zd3, zi1, zi2, zi3 = puntos_limite(img_aux, escalada, cx ,cy, radio)
+    h1,w1 = umbralizada.shape[0], umbralizada.shape[1]
+    puntos_d = definir_distancia_peso(zd1,zd2,zd3,0,cx,cy)
+    puntos_i = definir_distancia_peso(zi1,zi2,zi3,1,cx,cy)
+    ptos_normalizados = []
+    for pto in puntos_d:
+        ctx1 = int(round((h*pto[0][0])/h1))
+        cty1 = int(round((pto[0][1]*w)/w1))
+        ptos_normalizados.append(((ctx1, cty1), pto[1], pto[2], pto[3]))
+    for pto in puntos_i:
+        ctx1 = int(round((h*pto[0][0])/h1))
+        cty1 = int(round((pto[0][1]*w)/w1))
+        ptos_normalizados.append(((ctx1, cty1), pto[1], pto[2], pto[3]))
+    
+    #cv2.imshow("escalada",escalada)
+    '''umbralizada = umbralizada.astype(float)
+    cv2.imshow("umbralizada",umbralizada)
+    img_aux = img_aux.astype(float)
+    cv2.imshow("img_aux",img_aux)'''
+    k = cv2.waitKey(0)
+    if k == 27:         # wait for ESC key to exit
+        cv2.destroyAllWindows()
+        
+    return ptos_normalizados
+
+def detectar_pupila(image):
+    h,w = image.shape[0],image.shape[1]
+    img = filtrado_pupila(image)
+    img =  cv2.GaussianBlur(img,(7,7),7.6)
     edges = canny(img, sigma=2, low_threshold=15, high_threshold=50) #DETECTAR BORDES
     
     hough_radii = np.arange(20, 30, 1)  # Aproximamos radio de la pupilas
@@ -75,7 +256,7 @@ def detectar_pupila(image):
 
     for center_y, center_x, radius in zip(cy, cx, radii):
         value = img[center_y,center_x]
-        if (value == minimo):
+        if (value == minimo) :
             y.append(center_y)
             x.append(center_x)
             radio.append(radius)
@@ -108,26 +289,27 @@ def filtrar_esquinas(limites,esquinas, x, y, radio):
     if fila_fin > limites[0]:
         fila_fin = y + int(round(radio/3))
 
-    columna_inicio = x - radio
+    columna_inicio = x - radio 
     if columna_inicio<0 :
         columna_inicio = x - radio
     
-    columna_fin = x + radio
+    columna_fin = x + radio 
     if columna_fin >=limites[1]:
         columna_fin = x + radio
 
     puntos = [] 
     for i in range(len(esquinas)):
         if esquinas[i][0]>fila_inicio and esquinas[i][0]<fila_fin:
-            if (esquinas[i][1]< columna_inicio and esquinas[i][1] > x - 3 * radio) or (esquinas[i][1] > columna_fin and esquinas[i][1]< x + 3 * radio):
+            if (esquinas[i][1]< columna_inicio or esquinas[i][1] > columna_fin):
                 puntos.append(esquinas[i])
     
     esquinas = np.array(puntos)
     #print(esquinas)
     return esquinas
 
-def detectar_esclerotica(image, coord_pupila_x, coord_pupila_y, radio):
-    img = aumentarContraste(image)    #mejoramos contraste imagen en color
+def detectar_esclerotica(image, coord_pupila_x, coord_pupila_y, radio, direccion):
+    h,w = image.shape[0],image.shape[1]
+    ''''img = aumentarContraste(image)    #mejoramos contraste imagen en color
     #---------------------------------------------------------------------------#
     width = 150
     h,w = img.shape[0],img.shape[1]     #redimensionamos imagen
@@ -143,7 +325,7 @@ def detectar_esclerotica(image, coord_pupila_x, coord_pupila_y, radio):
     mediana = median(img,elemento_estructurado)
     substraida = img - mediana
     img = img + substraida
-    img = gaussian(img,(3,3),1)
+    img = gaussian(img,(3,3),1)'''
     '''unsharp_strength = 0.9
     blur_size = 8  # Standard deviation in pixels.
 
@@ -174,42 +356,54 @@ def detectar_esclerotica(image, coord_pupila_x, coord_pupila_y, radio):
     print(type(sharp[0][0]),type(img[0][0]))'''
     
     #---------------------------------------------------------------------------#
-    global_thresh = threshold_otsu(img)
+    return filtrado_esclerotica(image, coord_pupila_x, coord_pupila_y, radio)
+    #print(tam)
+    '''global_thresh = threshold_otsu(img)
     binary_global = img > global_thresh
     block_size = 35
     local_thresh = threshold_local(img, block_size)
     binary_local = img > local_thresh
     binary_local.astype(float)
-    binary_global.astype(float)
+    binary_global.astype(float)'''
     #---------------------------------------------------------------------------#
-    edges = canny(img, sigma=2, low_threshold=15, high_threshold=50) #DETECTAR BORDES
-    edges = edges.astype(float)
+    '''edges = canny(img, sigma=2, low_threshold=15, high_threshold=50) #DETECTAR BORDES
+    edges = edges.astype(float)'''
     #---------------------------------------------------------------------------#
-    coords = corner_peaks(corner_harris(binary_local), min_distance=5)
+    
+    #coords = corner_peaks(corner_harris(dif), min_distance=6)
+    #coords_i = corner_peaks(corner_harris(parte_i), min_distace=5)
     #coords1 = corner_peaks(corner_harris(edges), min_distance=5)
 
     #coords_subpix = corner_subpix(edges, coords, window_size=3)
 
     '''fig, ax = plt.subplots()
-    ax.imshow(binary_local, interpolation='nearest', cmap=plt.cm.gray)
+    ax.imshow(dif, interpolation='nearest', cmap=plt.cm.gray)
     ax.plot(coords[:, 1], coords[:, 0], '.b', markersize=3)
     #ax.plot(coords1[:, 1], coords1[:, 0], '+r', markersize=5)
     ax.axis((0, 350, 350, 0))
     plt.show()'''
 
-    coords = filtrar_esquinas(img.shape,coords, coord_pupila_x, coord_pupila_y, radio)
-    #coords1 = filtrar_esquinas(img.shape,coords1, coord_pupila_x, coord_pupila_y, radio)
+    '''fig, ax = plt.subplots()
+    ax.imshow(parte_i, interpolation='nearest', cmap=plt.cm.gray)
+    ax.plot(coords_i[:, 1], coords_i[:, 0], '.b', markersize=3)
+    #ax.plot(coords1[:, 1], coords1[:, 0], '+r', markersize=5)
+    ax.axis((0, 350, 350, 0))
+    plt.show()
+    print(parte_d.shape)
+    print(parte_i.shape)'''
+    #coords = filtrar_esquinas(dif.shape,coords, coord_pupila_x, coord_pupila_y, radio)
+    #coords1 = filtrar_esquinas(img.shape,coords1, coord_pupila_x, coord_pupila_y, radio)'''
 
     '''fig, ax = plt.subplots()
     ax.imshow(binary_local, interpolation='nearest', cmap=plt.cm.gray)
     ax.plot(coords[:, 1], coords[:, 0], '.b', markersize=3)
     #ax.plot(coords1[:, 1], coords1[:, 0], '+r', markersize=5)
     ax.axis((0, 350, 350, 0))
-    plt.show()'''
-
-    h1, w1 = binary_local.shape[0], binary_local.shape[1]
-    #print(h,w,h1,w1)
+    plt.show()
     coord_normalizadas = []
+    coord_normalizadas.append([x, y])'''
+    '''h1, w1 = dif.shape[0], dif.shape[1]
+    #print(h,w,h1,w1)
     for x in coords:
         ctx = int(round((h*x[0])/h1))
         cty = int(round((x[1]*w)/w1))
@@ -217,15 +411,15 @@ def detectar_esclerotica(image, coord_pupila_x, coord_pupila_y, radio):
         coord_normalizadas.append(item)
     
 
-    '''for x in coord_normalizadas:
-       cv2.circle(image,(x[0],x[1]),1,(0,255,0),2)
-    cv2.imshow("img",image)
+    for x in coord_normalizadas:
+       cv2.circle(image,(x[0],x[1]),1,(0,255,0),1)'''
+    '''cv2.imshow("img",image)
     cv2.imshow("img1",img)
     k = cv2.waitKey(0)
     if k == 27:         # wait for ESC key to exit
         cv2.destroyAllWindows()'''
     
-    return coord_normalizadas
+    #return coord_normalizadas
 
 def elementos_por_coordenada(x, lista_coord):
     contador = 0
@@ -262,7 +456,7 @@ def limite_esclerotica(image, lista_puntos, puntos_ojos, xd, xi, radio):
     ojo_i_i = []
     for x in puntos_ojos:
         for x1 in lista_puntos:
-            if (x[1] < x1[1] and x1[1]< x[1]+ int(round(radio/1.25))) and (x1[0]> x[0] - int(round(radio/1.10)) and x1[0] < x[0] + int(round(radio/1.10))) :
+            if (x[1] < x1[1] and x1[1]< x[1]+radio) and (x1[0]> x[0] - radio and x1[0] < x[0] + radio) :
                 if x[0] < xd :
                     ojo_d_d.append((x,x1))
                 elif x[0] > xi :
@@ -273,10 +467,10 @@ def limite_esclerotica(image, lista_puntos, puntos_ojos, xd, xi, radio):
                     ojo_i_d.append((x,x1))
                 #cv2.circle(image,(x1[0],x1[1]),1,(0,255,0),2)
 
-    ojo_d_d = filtrar_puntos(ojo_d_d)
+    '''ojo_d_d = filtrar_puntos(ojo_d_d)
     ojo_d_i = filtrar_puntos(ojo_d_i)
     ojo_i_d = filtrar_puntos(ojo_i_d)
-    ojo_i_i = filtrar_puntos(ojo_i_i)
+    ojo_i_i = filtrar_puntos(ojo_i_i)'''
     puntos = []
     for item in ojo_d_d:
         cv2.circle(image,(item[1]),1,(0,255,0),2)
@@ -314,12 +508,12 @@ def dividir_horizontalmente(img, y, x1, y1, x2, division_vertical):
     return division_horizontal
 
 def ojo_derecho(img, x, y, x1, y1, x2, y2, d_horizontal, d_vertical):
-    ojo_derecho = img[ y1 + d_vertical : y, x1 + d_horizontal : x1 + (2 * d_horizontal)+20 ]
+    ojo_derecho = img[ y1 + d_vertical : y, x1 + d_horizontal : x1 + (2 * d_horizontal) ]
 
     return ojo_derecho
 
 def ojo_izquierdo(img, x, y, x1, y1, x2, y2, d_horizontal, d_vertical):
-    ojo_izquierdo = img[ y1 + d_vertical : y, x1 + (3 * d_horizontal) -20 : x1 + (4 * d_horizontal) ]
+    ojo_izquierdo = img[ y1 + d_vertical : y, x1 + (3 * d_horizontal) -20 : x1 + (4* d_horizontal) ]
 
     return ojo_izquierdo
 
@@ -436,3 +630,154 @@ def determinar_lado(media_ojod_d, media_ojod_i, media_ojoi_d, media_ojoi_i):
         lado += "Indefinido"
 
     return lado
+
+def angulo_entre_2_puntos(x1, y1, x2, y2):
+    a = y2 - y1
+    b = x2 -x1
+    m = a / b
+
+    return np.tan(m)
+
+def filtrado_final(puntos, x, y):
+    puntos_filtrados = []
+    for pto in puntos:
+        if angulo_entre_2_puntos(pto[0], pto[1], x, y) < 0:
+            print(pto, x, y, angulo_entre_2_puntos(pto[0], pto[1], x, y))
+            puntos_filtrados.append(pto)
+
+    return puntos_filtrados
+
+def tupla_en_lista(x, lista):
+    esta = False
+    for item in lista:
+        #print(x, item, (x[0][0] == item[0][0] and x[0][1] == item[0][1]))
+        if x[0][0] == item[0][0] and x[0][1] == item[0][1] and x[1][0] == item[1][0] and x[1][1] == item[1][1] or x[0][0] == item[1][0] and x[0][1] == item[1][1] and x[1][0] == item[0][0] and x[1][1] == item[0][1]:
+            esta = True
+ 
+    return esta
+
+
+def tam(img, x, puntos, distancia, lista):
+    for pto in puntos:
+        if x!=pto and  np.abs(x[1] - pto[1]) < 5 :
+            #cv2.line(img, (x[0], x[1]), (pto[0], pto[1]), (0, 0, 255), 1)
+            if tupla_en_lista((x,pto), lista) == False:
+                #print(x, pto, np.abs(distancia_entre_dos_puntos(x[0], x[1], pto[0], pto[1])-distancia))
+                lista.append((x,pto))
+                cv2.line(img, (x[0], x[1]), (pto[0], pto[1]), (0, 0, 255), 1)
+    return lista
+
+def posibles_puntos(img, puntos, fi):
+    lista = []
+    for pto in puntos:
+        lista = tam(img, pto, puntos, fi, lista)
+    
+    return lista
+
+
+def limites_ojo(x, radio, puntos):
+    ptm_d = None
+    ptm_i = None
+    if len(puntos) > 0:
+        p_d = []
+        p_i = []
+        for pto in puntos:
+            pto1 = pto[0][0]
+            pto2 = pto[1][0]
+            if pto1 > x + radio:
+                p_i.append(pto1)
+            elif pto1 < x - radio:
+                p_d.append(pto1)
+            
+            if pto2 > x + radio:
+                p_i.append(pto2)
+            elif pto2 < x - radio:
+                p_d.append(pto2)
+        
+        ptm_d = int(np.sum(p_d) / len(p_d))
+        ptm_i = int(np.sum(p_i) / len(p_i))
+        
+    return ptm_d, ptm_i
+
+
+def determinar_mirada(puntos,cx):
+    '''dd1 = []
+    dd2 = []
+    dd3 = []
+    di1 = []
+    di2 = []
+    di3 = []'''
+    print('----')
+    m_d = 0
+    c_d = 0
+    c_i = 0
+    m_i = 0
+    for pto in puntos:
+        
+        if pto[0][0] < cx:
+            print('DER->',pto)
+            m_d += pto[1]
+            c_d += 1
+            '''if pto[2] ==50:
+                dd1.append((pto[0],pto[1]))
+            elif pto[2] ==35:
+                dd2.append((pto[0],pto[1]))
+            elif pto[2] ==15:
+                dd3.append((pto[0],pto[1]))'''
+        else:
+            print('IZQ->',pto)
+            m_i += pto[1]
+            c_i += 1
+            '''if pto[2] ==50:
+                di1.append((pto[0],pto[1]))
+            elif pto[2] ==35:
+                di2.append((pto[0],pto[1]))
+            elif pto[2] ==15:
+                di3.append((pto[0],pto[1]))'''
+
+    if m_d != 0:
+        m_d = m_d/c_d
+    if m_i != 0 :
+        m_i = m_i / c_i
+
+    print(m_d, m_i)
+    return m_d - m_i
+
+    '''peso1 = 0
+    peso2 = 0
+    peso3 = 0
+    if len(dd1)>0 and len(di1)>0:
+        print(dd1[0])
+        if dd1[0][1] < di1[0][1]:
+            peso1 = 50
+        else:
+            peso1 = -50
+    elif len(dd1)>0:
+        peso1 = 50
+    else:
+        peso1 = -50
+
+    if len(dd2)>0 and len(di2)>0:
+        if dd2[0][1] < di2[0][1]:
+            peso2 = 35
+        else:
+            peso2 = -35
+    elif len(dd2)>0:
+        peso2 = 35
+    else:
+        peso2 = -35
+
+    if len(dd3)>0 and len(di3)>0:
+        if dd3[0][1] < di3[0][1]:
+            peso3 = 15
+        else:
+            peso3 = -15
+    elif len(dd3)>0:
+        peso1 = 15
+    else:
+        peso1 = -15
+
+    total = peso1 + peso2 + peso3
+
+    return total'''
+

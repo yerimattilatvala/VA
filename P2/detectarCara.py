@@ -59,50 +59,53 @@ ojoi = ojo_izquierdo(img, x, y, x1, y1, x2, y2, division_horizontal, division_ve
 pd, cxd, cyd, xd, yd, rde, rd = detectar_pupila(ojod)
 pi, cxi, cyi, xi, yi, rie, ri = detectar_pupila(ojoi)
 radio_medio = int(round((rd + ri)/2))
+radio_medioE = int(round((rde + rie)/2))
 centroxd = x1 + division_horizontal + cxd
 centroyd = y1 + division_vertical + cyd
-centroxi = x1 + (3 * division_horizontal) + cxi-20
+centroxi = x1 + (3 * division_horizontal) + cxi - 20
 centroyi = y1 + division_vertical + cyi
 puntos_ojos = recta_ojos(img, centroxd, centroyd, centroxi, centroyi, x, rd, ri)
-puntosd = detectar_esclerotica(ojod, xd, yd, rde)
-puntosi = detectar_esclerotica(ojoi, xi, yi, rie)
-puntos_normalizados = []
+puntosd = filtrado_esclerotica(ojod, xd, yd, rde)
+puntosi = filtrado_esclerotica(ojoi, xi, yi, rie)
+puntos_normalizados_d = []
+puntos_normalizados_i = []
 for item in puntosd:
-    puntoxd = x1 + division_horizontal + item[0]
-    puntoyd = y1 + division_vertical + item[1]
-    puntos_normalizados.append((puntoxd,puntoyd))
-
+    puntoxd = x1 + division_horizontal + item[0][0]
+    puntoyd = y1 + division_vertical + item[0][1]
+    cv2.circle(img, (puntoxd, puntoyd),1,(255, 255, 0), 2)
+    puntos_normalizados_d.append(((puntoxd,puntoyd), item[1],item[2], item[3]))
+#puntos_normalizadosd = filtrado_final(puntos_normalizadosd, centroxd, centroyd)
+print(puntos_normalizados_d)
+print('------------')
 for item1 in puntosi:
-    puntoxi = x1 + (3 * division_horizontal) + item1[0] - 20 
-    puntoyi = y1 + division_vertical + item1[1] 
-    puntos_normalizados.append((puntoxi,puntoyi))
+    #print(item1)
+    puntoxi = x1 + (3 * division_horizontal) + item1[0][0] - 20 
+    puntoyi = y1 + division_vertical + item1[0][1] 
+    cv2.circle(img, (puntoxi, puntoyi),1,(0, 255, 255), 2)
+    puntos_normalizados_i.append(((puntoxi,puntoyi), item1[1], item1[2], item1[3]))
+print(puntos_normalizados_i)
+text = ""
+t1 = determinar_mirada(puntos_normalizados_d,centroxd)
+if t1 < 0:
+    text += "Dcha" 
+else : 
+    text += "Izda"
+text += " // "
+t2 = determinar_mirada(puntos_normalizados_i,centroxi)
+if t2 < 0:
+    text += "Dcha"
+else : 
+    text += "Izda" 
+text += " // "
+t = t1 + t2
+if t < 0:
+    text += "Dcha"
+else : 
+    text += "Izda"
 
-ptos_ojo_d_d, ptos_ojo_d_i, ptos_ojo_i_d, ptos_ojo_i_i = limite_esclerotica(img, puntos_normalizados, puntos_ojos, centroxd, centroxi, radio_medio)
-'''print(ptos_ojo_d_d)
-print(ptos_ojo_d_i)
-print(ptos_ojo_i_d)
-print(ptos_ojo_i_i)'''
-
-distancia_ptos_d_a_ojod = distancia_a_pupila(ptos_ojo_d_d, centroxd, centroyd)
-distancia_ptos_i_a_ojod = distancia_a_pupila(ptos_ojo_d_i, centroxd, centroyd)
-distancia_ptos_d_a_ojoi = distancia_a_pupila(ptos_ojo_i_d, centroxi, centroyi)
-distancia_ptos_i_a_ojoi = distancia_a_pupila(ptos_ojo_i_i, centroxi, centroyi)
-'''print(distancia_ptos_d_a_ojod)
-print(distancia_ptos_i_a_ojod)
-print(distancia_ptos_d_a_ojoi)
-print(distancia_ptos_i_a_ojoi)'''
-media_ojod_d = media_distancias(distancia_ptos_d_a_ojod)
-media_ojod_i = media_distancias(distancia_ptos_i_a_ojod)
-media_ojoi_d = media_distancias(distancia_ptos_d_a_ojoi)
-media_ojoi_i = media_distancias(distancia_ptos_i_a_ojoi)
-print(media_ojod_d)
-print(media_ojod_i)
-print(media_ojoi_d)
-print(media_ojoi_i)
-for item in puntos_ojos:
-    cv2.circle(img,item,1,(255,0,0),2)
 cv2.circle(img,(centroxd,centroyd),rd,(255,0,0),1)
 cv2.circle(img,(centroxi,centroyi),ri,(255,0,0),1)
+cv2.line(img, (centroxd,centroyd), (centroxi,centroyi),(255, 0, 0), 1)
 lineThickness = 1
 #cv2.line(img, (centroxd,centroyd), (centroxi,centroyi),(255, 0, 0), lineThickness)
 #cv2.line(img, (centroxd-2*rd,centroyd), (centroxd + rd*2,centroyd),(0, 100, 255), lineThickness)
@@ -114,10 +117,10 @@ bottomLeftCornerOfText = (10,500)
 fontScale              = 1
 fontColor              = (255,255,255)
 lineType               = 2
-cv2.putText(img ,determinar_lado(media_ojod_d, media_ojod_i, media_ojoi_d, media_ojoi_i), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
+cv2.putText(img ,text, bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
 cv2.imshow("",img)
-cv2.imshow("pd",pd)
-cv2.imshow("pi",pi)
+#cv2.imshow("pd",pd)
+#cv2.imshow("pi",pi)
 k = cv2.waitKey(0)
 if k == 27:         # wait for ESC key to exit
     cv2.destroyAllWindows()
