@@ -65,7 +65,6 @@ def puntos_limite(img, img2, cx, cy, radio):
     zona_interes = img[cy - int(round(radio/2)) : cy + int(round(radio/3)), :]
     #zona_interes = img[cy - int(round(radio/2)) : cy + int(round(radio/2)), :]
     #zona_interes = binary_opening(zona_interes, np.ones((1,5)))
-    #zona_interes = binary_erosion(zona_interes, np.ones((6,1)))
     for (x,y), value in np.ndenumerate(zona_interes):
         if value == 1:
             pto, dist = punto_final(zona_interes,y,x)
@@ -79,12 +78,12 @@ def puntos_limite(img, img2, cx, cy, radio):
     for pto in puntos:
         if pto[0][0] > cx + radio and pto[0][0] < cx + int(2.5*radio):
             ptos_i.append(pto)
-            '''cv2.circle(img2,pto[0],1,(255,255,0),1)
-            cv2.circle(img2,pto[1],1,(255,255,0),1)'''
+            cv2.circle(img2,pto[0],1,(255,255,0),1)
+            cv2.circle(img2,pto[1],1,(255,255,0),1)
         elif pto[0][0] < cx - radio and pto[0][0] > cx - int(2.5*radio):
             ptos_d.append(pto)
-            '''cv2.circle(img2,pto[0],1,(0,255,255),1)
-            cv2.circle(img2,pto[1],1,(0,255,255),1)'''
+            cv2.circle(img2,pto[0],1,(0,255,255),1)
+            cv2.circle(img2,pto[1],1,(0,255,255),1)
     
     porcion_dch = int(round(cx/4))
     porcion_izq = int(round((img.shape[1] - cx))/4)
@@ -118,18 +117,19 @@ def puntos_limite(img, img2, cx, cy, radio):
             zi_2.append(pto)
             '''cv2.circle(img2,pto[0],1,(255, 0, 0),1)
             cv2.circle(img2,pto[1],1,(255, 0, 0),1)'''
-        elif pto[0][0] > cx + (porcion_izq*2) and pto[0][0] < 150:
+        elif pto[0][0] > cx + (porcion_izq*2) and pto[0][0] < cx + (porcion_izq*3) :
             zi_3.append(pto)
             '''cv2.circle(img2,pto[0],1,(0,0,255),1)
             cv2.circle(img2,pto[1],1,(0,0,255),1)'''
         
 
 
-    '''cv2.imshow("img",img[cy - int(round(radio/2)) : cy + int(round(radio/2)), :])
+    cv2.imshow("img",img)
+    cv2.imshow("img2",img2)
     cv2.imshow("zona_interes", zona_interes.astype(float))
     k = cv2.waitKey(0)
     if k == 27:         # wait for ESC key to exit
-        cv2.destroyAllWindows()'''
+        cv2.destroyAllWindows()
     return zd_1, zd_2, zd_3, zi_1, zi_2, zi_3
 
 def definir_distancia_peso(z1,z2,z3, dir, cx, cy):
